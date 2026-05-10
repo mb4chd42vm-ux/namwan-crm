@@ -5,7 +5,6 @@ import {
   Hash, Clock, Cake, MessageSquare, TrendingUp,
   Pencil, Store,
 } from 'lucide-react'
-import CustomerPurchaseModal from '@/components/purchases/CustomerPurchaseModal'
 import RedeemPointsModal from '@/components/points/RedeemPointsModal'
 import { SEGMENT_META, TX_META, thb, pts, fmt, type Segment, type TxType } from '@/data/mock'
 import { createClient } from '@/lib/supabase/server'
@@ -131,12 +130,6 @@ export default async function CustomerDetailPage({
               customerId={id}
               customerName={customer.name}
               currentBalance={displayPoints}
-              branches={branches ?? []}
-              defaultBranchId={customer.home_branch_id ?? null}
-            />
-            <CustomerPurchaseModal
-              customerId={id}
-              customerName={customer.name}
               branches={branches ?? []}
               defaultBranchId={customer.home_branch_id ?? null}
             />

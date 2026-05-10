@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, useTransition } from 'react'
 import {
   Star, Coffee, Gift, Phone, Loader2, AlertTriangle,
-  ShoppingBag, ChevronRight,
+  ShoppingBag, ChevronRight, CheckCircle,
 } from 'lucide-react'
 import { useLiff, type LiffProfile } from '@/hooks/useLiff'
 
@@ -344,16 +344,64 @@ function RegisterView({
 
 // ── Member card view ──────────────────────────────────────────────────────────
 
+const POINTS_PER_DRINK = 10
+
 function MemberView({
-  customer,
-  txs,
+  customer: initialCustomer,
+  txs:      initialTxs,
   purchases,
 }: {
   customer:  Customer
   txs:       Tx[]
   purchases: Purchase[]
 }) {
-  const [tab, setTab] = useState<'points' | 'purchases'>('points')
+  const [tab,      setTab]      = useState<'points' | 'purchases'>('points')
+  const [customer, setCustomer] = useState(initialCustomer)
+  const [txs,      setTxs]      = useState(initialTxs)
+
+  // Redeem flow
+  const [redeemState, setRedeemState] = useState<'idle' | 'pending' | 'success' | 'error'>('idle')
+  const [redeemError, setRedeemError] = useState<string | null>(null)
+  const [newBalance,  setNewBalance]  = useState<number | null>(null)
+
+  const canRedeem = customer.total_points >= POINTS_PER_DRINK
+
+  async function handleRedeem() {
+    setRedeemState('pending')
+    setRedeemError(null)
+    try {
+      const res  = await fetch('/api/liff/redeem', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({
+          line_id:   customer.line_id,
+          branch_id: customer.home_branch_id ?? undefined,
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setRedeemState('error')
+        setRedeemError(data.error ?? 'Redemption failed')
+        return
+      }
+      setNewBalance(data.new_balance)
+      setCustomer(c => ({ ...c, total_points: data.new_balance }))
+      // Prepend synthetic tx so history updates immediately
+      setTxs(prev => [{
+        id:            `local-${Date.now()}`,
+        type:          'redeem',
+        points:        -POINTS_PER_DRINK,
+        balance_after: data.new_balance,
+        note:          'Redeemed 1 free drink',
+        created_at:    new Date().toISOString(),
+        branches:      null,
+      }, ...prev])
+      setRedeemState('success')
+    } catch {
+      setRedeemState('error')
+      setRedeemError('Connection error. Please try again.')
+    }
+  }
 
   const progress     = ((customer.total_points % 10) / 10) * 100
   const drinksToFree = Math.max(0, 10 - (customer.total_points % 10))
@@ -413,11 +461,41 @@ function MemberView({
             </div>
             <p className="text-xs text-white/50">
               {drinksToFree === 0
-                ? '🎉 Free drink ready — show this to staff!'
+                ? 'Free drink ready — show this to staff!'
                 : `${drinksToFree} more drink${drinksToFree !== 1 ? 's' : ''} to earn a free one`}
             </p>
           </div>
         </div>
+
+        {/* Redeem button */}
+        {redeemState === 'success' ? (
+          <div className="flex items-center gap-3 rounded-2xl bg-emerald-500/20 border border-emerald-400/30 px-4 py-4">
+            <CheckCircle size={20} className="text-emerald-300 flex-shrink-0" />
+            <div>
+              <p className="text-sm font-bold text-white">1 free drink redeemed!</p>
+              <p className="text-xs text-white/60 mt-0.5">New balance: {newBalance} pts</p>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            <button
+              onClick={handleRedeem}
+              disabled={!canRedeem || redeemState === 'pending'}
+              className="w-full h-14 rounded-2xl bg-amber-300 text-amber-900 font-bold text-base flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed active:scale-[0.97] transition-all"
+            >
+              {redeemState === 'pending' ? (
+                <><Loader2 size={18} className="animate-spin" /> Redeeming…</>
+              ) : canRedeem ? (
+                <>Redeem 1 Free Drink <span className="opacity-70 text-sm font-normal">· 10 pts</span></>
+              ) : (
+                <>{POINTS_PER_DRINK - customer.total_points} more pts needed</>
+              )}
+            </button>
+            {redeemState === 'error' && redeemError && (
+              <p className="text-xs text-red-300 text-center">{redeemError}</p>
+            )}
+          </div>
+        )}
 
         {/* Stats row */}
         <div className="grid grid-cols-3 gap-2">

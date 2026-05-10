@@ -1,9 +1,8 @@
 import Topbar from '@/components/layout/Topbar'
-import { SlidersHorizontal, Star, QrCode } from 'lucide-react'
+import { Star, QrCode } from 'lucide-react'
 import Link from 'next/link'
 import { TX_META, pts, fmt, type TxType } from '@/data/mock'
 import { createClient } from '@/lib/supabase/server'
-import { getCurrentSession, canEditPointsManually } from '@/lib/auth'
 
 export default async function PointsPage({
   searchParams,
@@ -13,10 +12,10 @@ export default async function PointsPage({
   const params       = await searchParams
   const branchFilter = params.branch ?? null
 
-  const [session, supabase] = await Promise.all([getCurrentSession(), createClient()])
-  const canAdjust = canEditPointsManually(session?.profile?.role ?? 'staff')
+  const supabase = await createClient()
 
   const [{ data: branches }, { data: customers }, { data: txs }] = await Promise.all([
+
     supabase
       .from('branches')
       .select('id, name, color_hex')
@@ -90,19 +89,12 @@ export default async function PointsPage({
         {/* Header */}
         <div className="flex items-center justify-between">
           <p className="text-[13px] font-semibold text-gray-700">Transaction Log</p>
-          <div className="flex items-center gap-2">
-            <Link
-              href="/points/qr/create"
-              className="flex items-center gap-2 rounded-xl bg-amber-500 px-4 py-2 text-xs font-semibold text-white hover:bg-amber-600 transition-colors"
-            >
-              <QrCode size={13} /> Generate QR
-            </Link>
-            {canAdjust && (
-              <button className="flex items-center gap-2 rounded-xl bg-brand-600 px-4 py-2 text-xs font-semibold text-white hover:bg-brand-700 transition-colors">
-                <SlidersHorizontal size={13} /> Adjust Points
-              </button>
-            )}
-          </div>
+          <Link
+            href="/points/qr/create"
+            className="flex items-center gap-2 rounded-xl bg-amber-500 px-4 py-2 text-xs font-semibold text-white hover:bg-amber-600 transition-colors"
+          >
+            <QrCode size={13} /> Generate QR
+          </Link>
         </div>
 
         {/* Table */}

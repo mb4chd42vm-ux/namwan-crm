@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import { X, Star, Coffee, CheckCircle, AlertTriangle } from 'lucide-react'
+import { X, Star, CheckCircle } from 'lucide-react'
 import { redeemPoints } from '@/app/actions/redeemPoints'
 
 const POINTS_PER_DRINK = 10
@@ -15,32 +15,23 @@ export default function RedeemPointsModal({
   branches,
   defaultBranchId,
 }: {
-  customerId: string
-  customerName: string
-  currentBalance: number
-  branches: Branch[]
+  customerId:      string
+  customerName:    string
+  currentBalance:  number
+  branches:        Branch[]
   defaultBranchId?: string | null
 }) {
-  const [open, setOpen] = useState(false)
+  const [open, setOpen]           = useState(false)
   const [isPending, startTransition] = useTransition()
-  const [error,   setError]   = useState<string | null>(null)
-  const [success, setSuccess] = useState(false)
+  const [error,   setError]       = useState<string | null>(null)
+  const [success, setSuccess]     = useState(false)
+  const [branchId, setBranchId]   = useState(defaultBranchId ?? branches[0]?.id ?? '')
 
-  const [branchId, setBranchId] = useState(defaultBranchId ?? branches[0]?.id ?? '')
-  const [freeDrinks, setFreeDrinks] = useState('')
-  const [note,       setNote]       = useState('')
-
-  const drinkCount     = Math.max(0, Math.floor(Number(freeDrinks) || 0))
-  const pointsRequired = drinkCount * POINTS_PER_DRINK
-  const remainingAfter = currentBalance - pointsRequired
-  const isOverdraft    = pointsRequired > currentBalance
-  const maxDrinks      = Math.floor(currentBalance / POINTS_PER_DRINK)
-  const isValid        = drinkCount > 0 && !isOverdraft && !!branchId
+  const remainingAfter = currentBalance - POINTS_PER_DRINK
+  const canRedeem      = currentBalance >= POINTS_PER_DRINK
 
   function reset() {
     setBranchId(defaultBranchId ?? branches[0]?.id ?? '')
-    setFreeDrinks('')
-    setNote('')
     setError(null)
     setSuccess(false)
   }
@@ -51,22 +42,18 @@ export default function RedeemPointsModal({
   }
 
   function submit() {
-    if (!branchId)        { setError('Please select a branch'); return }
-    if (drinkCount <= 0)  { setError('Enter at least 1 free drink'); return }
-    if (isOverdraft)      { setError(`Not enough points — need ${pointsRequired}, have ${currentBalance}`); return }
+    if (!branchId) { setError('Please select a branch'); return }
 
     const fd = new FormData()
     fd.append('customer_id', customerId)
     fd.append('branch_id',   branchId)
-    fd.append('free_drinks', String(drinkCount))
-    fd.append('note',        note || `Redeemed ${drinkCount} free drink${drinkCount !== 1 ? 's' : ''} (${pointsRequired} pts)`)
 
     setError(null)
     startTransition(async () => {
       try {
         await redeemPoints(fd)
         setSuccess(true)
-        setTimeout(close, 2000)
+        setTimeout(close, 2200)
       } catch (e: unknown) {
         setError(e instanceof Error ? e.message : 'Something went wrong')
       }
@@ -77,11 +64,11 @@ export default function RedeemPointsModal({
     <>
       <button
         onClick={() => setOpen(true)}
-        disabled={currentBalance < POINTS_PER_DRINK}
+        disabled={!canRedeem}
         className="inline-flex items-center gap-1.5 rounded-xl border border-amber-200 bg-amber-50 px-3.5 py-1.5 text-xs font-semibold text-amber-700 hover:bg-amber-100 hover:border-amber-300 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
       >
         <Star size={11} className="fill-amber-400 text-amber-500" />
-        Redeem Points
+        Redeem Free Drink
       </button>
 
       {open && (
@@ -90,14 +77,14 @@ export default function RedeemPointsModal({
 
           <div className="relative w-full max-w-sm rounded-2xl bg-white shadow-2xl">
 
-            {/* header */}
+            {/* Header */}
             <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
               <div className="flex items-center gap-2.5">
                 <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-amber-100">
                   <Star size={14} className="text-amber-600 fill-amber-400" />
                 </div>
                 <div>
-                  <p className="text-sm font-semibold text-gray-900">Redeem Free Drinks</p>
+                  <p className="text-sm font-semibold text-gray-900">Redeem Free Drink</p>
                   <p className="text-[10px] text-gray-400">{customerName}</p>
                 </div>
               </div>
@@ -106,7 +93,7 @@ export default function RedeemPointsModal({
               </button>
             </div>
 
-            {/* body */}
+            {/* Body */}
             <div className="px-5 py-5 space-y-4">
 
               {success ? (
@@ -115,30 +102,37 @@ export default function RedeemPointsModal({
                     <CheckCircle size={24} className="text-amber-600" />
                   </div>
                   <div>
-                    <p className="text-sm font-semibold text-gray-900">
-                      {drinkCount} free drink{drinkCount !== 1 ? 's' : ''} redeemed!
-                    </p>
+                    <p className="text-sm font-semibold text-gray-900">1 free drink redeemed!</p>
                     <p className="mt-1 text-xs text-gray-500">
-                      <span className="font-bold text-red-500">−{pointsRequired}</span> pts ·{' '}
+                      <span className="font-bold text-red-500">−{POINTS_PER_DRINK}</span> pts ·{' '}
                       <span className="font-bold text-gray-700">{Math.max(0, remainingAfter)}</span> remaining
                     </p>
                   </div>
                 </div>
               ) : (
                 <>
-                  {/* balance + rate banner */}
+                  {/* Balance banner */}
                   <div className="flex items-center justify-between rounded-xl bg-amber-50 border border-amber-100 px-4 py-3">
                     <div>
                       <div className="flex items-center gap-2">
                         <Star size={13} className="fill-amber-400 text-amber-500" />
                         <span className="text-[11px] font-semibold text-amber-700 uppercase tracking-wide">Balance</span>
                       </div>
-                      <p className="text-[10px] text-amber-600 mt-0.5">10 pts = 1 free drink · max {maxDrinks} drink{maxDrinks !== 1 ? 's' : ''}</p>
+                      <p className="text-[10px] text-amber-600 mt-0.5">10 pts = 1 free drink</p>
                     </div>
                     <span className="text-lg font-extrabold text-amber-700">{currentBalance.toLocaleString()}</span>
                   </div>
 
-                  {/* branch */}
+                  {/* What will be deducted */}
+                  <div className="rounded-xl bg-gray-50 border border-gray-100 px-4 py-3 flex items-center justify-between">
+                    <span className="text-xs text-gray-500">Deducting</span>
+                    <div className="text-right">
+                      <p className="text-sm font-bold text-red-500">−{POINTS_PER_DRINK} pts</p>
+                      <p className="text-[10px] text-gray-400">{Math.max(0, remainingAfter)} remaining</p>
+                    </div>
+                  </div>
+
+                  {/* Branch selector */}
                   <div>
                     <label className="block text-[11px] font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
                       Branch *
@@ -166,68 +160,6 @@ export default function RedeemPointsModal({
                     </div>
                   </div>
 
-                  {/* free drinks input */}
-                  <div>
-                    <label className="block text-[11px] font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
-                      Free Drinks *
-                    </label>
-                    <div className="relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 select-none">
-                        <Coffee size={13} className="text-gray-400" />
-                      </span>
-                      <input
-                        type="number"
-                        value={freeDrinks}
-                        onChange={e => setFreeDrinks(e.target.value)}
-                        placeholder="0"
-                        min="1"
-                        max={maxDrinks}
-                        step="1"
-                        autoFocus
-                        className={`w-full h-11 pl-8 pr-3 rounded-xl border text-sm font-bold placeholder:font-normal placeholder:text-gray-400 focus:outline-none focus:ring-2 transition-colors ${
-                          isOverdraft
-                            ? 'border-red-300 text-red-600 focus:border-red-400 focus:ring-red-400/20'
-                            : 'border-gray-200 text-gray-900 focus:border-amber-400 focus:ring-amber-400/20'
-                        }`}
-                      />
-                    </div>
-
-                    {/* preview */}
-                    {drinkCount > 0 && (
-                      <div className={`mt-2 flex items-center gap-2 rounded-xl px-3 py-2 text-[11px] font-semibold border ${
-                        isOverdraft
-                          ? 'bg-red-50 border-red-100 text-red-600'
-                          : 'bg-gray-50 border-gray-100 text-gray-600'
-                      }`}>
-                        {isOverdraft ? (
-                          <>
-                            <AlertTriangle size={11} className="text-red-500 flex-shrink-0" />
-                            Need {pointsRequired} pts — {pointsRequired - currentBalance} more required
-                          </>
-                        ) : (
-                          <>
-                            <Star size={10} className="fill-amber-400 text-amber-500 flex-shrink-0" />
-                            {pointsRequired} pts deducted · <span className="ml-1 font-extrabold text-gray-900">{remainingAfter.toLocaleString()}</span>&nbsp;remaining
-                          </>
-                        )}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* note */}
-                  <div>
-                    <label className="block text-[11px] font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
-                      Note <span className="normal-case text-gray-400 font-normal">(optional)</span>
-                    </label>
-                    <input
-                      type="text"
-                      value={note}
-                      onChange={e => setNote(e.target.value)}
-                      placeholder="e.g. Free latte, birthday reward…"
-                      className="w-full h-10 px-3 rounded-xl border border-gray-200 text-xs text-gray-900 placeholder:text-gray-400 focus:outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-400/20 transition-colors"
-                    />
-                  </div>
-
                   {error && (
                     <p className="rounded-xl bg-red-50 border border-red-100 px-3 py-2 text-xs text-red-600">
                       {error}
@@ -237,7 +169,7 @@ export default function RedeemPointsModal({
               )}
             </div>
 
-            {/* footer */}
+            {/* Footer */}
             {!success && (
               <div className="flex gap-3 px-5 py-4 border-t border-gray-100">
                 <button
@@ -251,14 +183,10 @@ export default function RedeemPointsModal({
                 <button
                   type="button"
                   onClick={submit}
-                  disabled={isPending || !isValid}
+                  disabled={isPending || !branchId}
                   className="flex-1 rounded-xl bg-amber-500 py-2.5 text-xs font-semibold text-white hover:bg-amber-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {isPending
-                    ? 'Redeeming…'
-                    : drinkCount > 0
-                    ? `Redeem ${drinkCount} drink${drinkCount !== 1 ? 's' : ''} (${pointsRequired} pts)`
-                    : 'Redeem'}
+                  {isPending ? 'Redeeming…' : 'Redeem 1 Free Drink'}
                 </button>
               </div>
             )}
