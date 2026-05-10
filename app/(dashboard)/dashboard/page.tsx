@@ -2,7 +2,8 @@ import Topbar from '@/components/layout/Topbar'
 import PointsChart from '@/components/dashboard/PointsChart'
 import type { PointsBarData } from '@/components/dashboard/PointsChart'
 import { createClient } from '@/lib/supabase/server'
-import { SEGMENT_META, pts, fmt, type Segment } from '@/data/mock'
+import { pts, fmt } from '@/data/mock'
+import { SEGMENT_META, ALL_SEGMENTS, SEGMENT_COLOR, computeSegment, type Segment } from '@/lib/segments'
 import { Users, Star, Gift, UserPlus, ArrowUpRight } from 'lucide-react'
 import Link from 'next/link'
 
@@ -68,10 +69,10 @@ export default async function DashboardPage({
       .eq('is_active', true)
       .order('sort_order'),
 
-    // All active members
+    // All active members (include fields needed for segment computation)
     supabase
       .from('customers')
-      .select('id, name, segment, home_branch_id, total_points, discovered_from, created_at')
+      .select('id, name, home_branch_id, total_points, total_visits, last_visit_at, discovered_from, created_at')
       .eq('is_active', true),
 
     // New members registered today
@@ -81,10 +82,10 @@ export default async function DashboardPage({
       .eq('is_active', true)
       .gte('created_at', todayStart),
 
-    // All points transactions for branch activity
+    // All points transactions for branch activity + segment computation
     supabase
       .from('points_transactions')
-      .select('branch_id, type, points, created_at'),
+      .select('customer_id, branch_id, type, points, created_at'),
 
     // Today's points transactions
     supabase
@@ -136,10 +137,27 @@ export default async function DashboardPage({
 
   const totalPointsOutstanding = filteredCustomers.reduce((s, c) => s + (c.total_points ?? 0), 0)
 
+  // ── Compute segments from live data ──────────────────────────────────────────
+  const redeemCountMap = new Map<string, number>()
+  for (const tx of txs) {
+    if (tx.type === 'redeem') {
+      const id = (tx as { customer_id: string; branch_id: string; type: string; points: number; created_at: string }).customer_id
+      redeemCountMap.set(id, (redeemCountMap.get(id) ?? 0) + 1)
+    }
+  }
+
+  const filteredWithSegment = filteredCustomers.map(c => ({
+    ...c,
+    computedSegment: computeSegment(
+      { created_at: c.created_at, last_visit_at: c.last_visit_at ?? null, total_visits: c.total_visits ?? 0, total_points: c.total_points ?? 0 },
+      redeemCountMap.get(c.id) ?? 0,
+    ),
+  }))
+
   // ── Segment distribution ──────────────────────────────────────────────────────
-  const segmentCounts = (['new', 'returning', 'vip', 'inactive'] as Segment[]).map(s => ({
+  const segmentCounts = ALL_SEGMENTS.map(s => ({
     segment: s,
-    count:   filteredCustomers.filter(c => c.segment === s).length,
+    count:   filteredWithSegment.filter(c => c.computedSegment === s).length,
   }))
 
   // ── Points chart by branch ────────────────────────────────────────────────────
@@ -191,7 +209,7 @@ export default async function DashboardPage({
   const unknownCount = filteredCustomers.filter(c => !c.discovered_from).length
 
   // ── Top members by points ─────────────────────────────────────────────────────
-  const topMembers = [...filteredCustomers]
+  const topMembers = [...filteredWithSegment]
     .sort((a, b) => (b.total_points ?? 0) - (a.total_points ?? 0))
     .slice(0, 6)
 
@@ -212,7 +230,7 @@ export default async function DashboardPage({
         <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
           <StatCard
             label="Total Members" value={fmt(totalMembers)}
-            sub={`${filteredCustomers.filter(c => c.segment === 'vip').length} VIP`}
+            sub={`${filteredWithSegment.filter(c => c.computedSegment === 'top_fans').length} top fans`}
             icon={Users} color="bg-blue-50 text-blue-600"
             trend={{ text: `${newMembersToday} new today`, up: true }}
           />
@@ -277,13 +295,7 @@ export default async function DashboardPage({
                       <div className="h-1.5 rounded-full bg-gray-100 overflow-hidden">
                         <div
                           className="h-full rounded-full"
-                          style={{
-                            width: `${pct}%`,
-                            background:
-                              segment === 'vip'       ? '#d97519' :
-                              segment === 'returning' ? '#16a34a' :
-                              segment === 'new'       ? '#2563eb' : '#9ca3af',
-                          }}
+                          style={{ width: `${pct}%`, background: SEGMENT_COLOR[segment] }}
                         />
                       </div>
                     </div>
@@ -355,7 +367,6 @@ export default async function DashboardPage({
               ) : (
                 <div className="divide-y divide-gray-50">
                   {topMembers.map((c, i) => {
-                    const m      = SEGMENT_META[c.segment as Segment]
                     const branch = allBranches.find(b => b.id === c.home_branch_id)
                     return (
                       <Link
@@ -373,10 +384,15 @@ export default async function DashboardPage({
                             {branch?.name ?? '—'}
                           </p>
                         </div>
-                        <span className={`hidden sm:inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium ${m.bg} ${m.color}`}>
-                          <span className={`h-1 w-1 rounded-full ${m.dot}`} />
-                          {m.label}
-                        </span>
+                        {(() => {
+                          const sm = SEGMENT_META[c.computedSegment as Segment]
+                          return (
+                            <span className={`hidden sm:inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium ${sm.bg} ${sm.color}`}>
+                              <span className={`h-1 w-1 rounded-full ${sm.dot}`} />
+                              {sm.label}
+                            </span>
+                          )
+                        })()}
                         <div className="text-right">
                           <p className="text-xs font-bold text-amber-700">{pts(c.total_points ?? 0)}</p>
                         </div>

@@ -2,7 +2,8 @@
 
 import { useRouter } from 'next/navigation'
 import { Star, Phone, ChevronRight } from 'lucide-react'
-import { SEGMENT_META, thb, fmt, type Segment } from '@/data/mock'
+import { SEGMENT_META, type Segment } from '@/lib/segments'
+import { thb, fmt } from '@/data/mock'
 
 interface Branch { id: string; name: string; color_hex: string }
 
@@ -39,7 +40,7 @@ export default function CustomerRow({
   branches, query,
 }: CustomerRowProps) {
   const router = useRouter()
-  const m      = SEGMENT_META[segment as Segment] ?? SEGMENT_META['new']
+  const m      = SEGMENT_META[segment as Segment] ?? SEGMENT_META['active']
   const branch = branches.find(b => b.id === home_branch_id)
 
   const lastVisit = last_visit_at

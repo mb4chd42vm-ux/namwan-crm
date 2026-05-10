@@ -7,7 +7,8 @@ import {
   User, Bell, BellOff, Heart,
 } from 'lucide-react'
 import RedeemPointsModal from '@/components/points/RedeemPointsModal'
-import { SEGMENT_META, TX_META, thb, pts, fmt, type Segment, type TxType } from '@/data/mock'
+import { TX_META, thb, pts, fmt, type TxType } from '@/data/mock'
+import { SEGMENT_META, computeSegment, type Segment } from '@/lib/segments'
 import { createClient } from '@/lib/supabase/server'
 
 // Always fetch fresh — never serve a stale/deleted customer from cache
@@ -128,10 +129,13 @@ export default async function CustomerDetailPage({
     other:             'Other',
   }
 
-  const segment     = customer.segment as Segment
-  const m           = SEGMENT_META[segment]
   const allPurchases = purchases ?? []
   const allTxs       = pointsTxs ?? []
+
+  // Compute segment from live data — ignore the stored DB value
+  const redeemCount = allTxs.filter(t => t.type === 'redeem').length
+  const segment     = computeSegment(customer, redeemCount)
+  const m           = SEGMENT_META[segment]
 
   const memberSince = new Date(customer.created_at).toLocaleDateString('en-GB', {
     day: '2-digit', month: 'short', year: 'numeric',

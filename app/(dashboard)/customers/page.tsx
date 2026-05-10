@@ -6,18 +6,21 @@ import ExportMembersButton from '@/components/customers/ExportMembersButton'
 import Link from 'next/link'
 import { Suspense } from 'react'
 import { Users, AlertCircle } from 'lucide-react'
-import { SEGMENT_META, thb, pts, fmt, type Segment } from '@/data/mock'
+import { pts, fmt } from '@/data/mock'
+import { SEGMENT_META, ALL_SEGMENTS, computeSegment, type Segment } from '@/lib/segments'
 import { createClient } from '@/lib/supabase/server'
 
 // Always fetch fresh — prevents stale cache from showing deleted/outdated rows
 export const dynamic = 'force-dynamic'
 
 const TABS: { value: string; label: string }[] = [
-  { value: 'all',       label: 'All' },
-  { value: 'vip',       label: 'VIP' },
-  { value: 'returning', label: 'Returning' },
-  { value: 'new',       label: 'New' },
-  { value: 'inactive',  label: 'Inactive' },
+  { value: 'all',            label: 'All' },
+  { value: 'top_fans',       label: 'Top Fans' },
+  { value: 'loyal',          label: 'Loyal' },
+  { value: 'high_potential', label: 'High Potential' },
+  { value: 'new_member',     label: 'New' },
+  { value: 'active',         label: 'Active' },
+  { value: 'inactive',       label: 'Inactive' },
 ]
 
 export default async function CustomersPage({
@@ -33,70 +36,73 @@ export default async function CustomersPage({
 
   const supabase = await createClient()
 
-  // ── Build both customer queries (but don't await yet) ──────────────────────
-  let filteredQ = supabase
+  // Build base query — no segment filter (segments are computed, not stored)
+  let baseQ = supabase
     .from('customers')
-    .select('id, name, phone, segment, home_branch_id, total_spending, total_points, visit_count, last_visit_at')
+    .select('id, name, phone, home_branch_id, total_points, visit_count, last_visit_at, created_at')
     .eq('is_active', true)
-    .order('total_spending', { ascending: false })
-
-  let countsQ = supabase
-    .from('customers')
-    .select('segment')
-    .eq('is_active', true)
+    .order('total_points', { ascending: false })
 
   if (q.trim()) {
-    filteredQ = filteredQ.or(`name.ilike.%${q.trim()}%,phone.ilike.%${q.trim()}%`)
-    countsQ   = countsQ.or(`name.ilike.%${q.trim()}%,phone.ilike.%${q.trim()}%`)
+    baseQ = baseQ.or(`name.ilike.%${q.trim()}%,phone.ilike.%${q.trim()}%`)
   }
   if (branchFilter) {
-    filteredQ = filteredQ.eq('home_branch_id', branchFilter)
-    countsQ   = countsQ.eq('home_branch_id', branchFilter)
-  }
-  if (seg !== 'all') {
-    filteredQ = filteredQ.eq('segment', seg)
+    baseQ = baseQ.eq('home_branch_id', branchFilter)
   }
 
-  // ── Fire all three queries in parallel ────────────────────────────────────
+  // Fire all queries in parallel
   const [
-    { data: branches,      error: branchErr },
-    { data: customers,     error: custErr   },
-    { data: allForCounts,  error: countErr  },
+    { data: branches,   error: branchErr },
+    { data: customers,  error: custErr   },
+    { data: redeemTxs },
   ] = await Promise.all([
     supabase.from('branches').select('id, name, color_hex').eq('is_active', true).order('sort_order'),
-    filteredQ,
-    countsQ,
+    baseQ,
+    supabase.from('points_transactions').select('customer_id').eq('type', 'redeem'),
   ])
 
-  // Log Supabase errors and customer counts — never use mock data as fallback
   if (branchErr) console.error('[customers] branches query error:', branchErr)
   if (custErr)   console.error('[customers] customers query error:', custErr)
-  if (countErr)  console.error('[customers] counts query error:',   countErr)
 
-  // NOTE: no fallback to mock/CUSTOMERS — always real Supabase data only
-  const allCounts = allForCounts ?? []
-  const filtered  = customers    ?? []
-
-  console.log(`[customers] loaded ${filtered.length} customers from Supabase (mock: 0)`)
-  if (filtered.length === 0 && !custErr) {
-    console.log('[customers] Supabase returned 0 customers — showing empty state')
+  // Build redeem count map
+  const redeemCountMap = new Map<string, number>()
+  for (const tx of redeemTxs ?? []) {
+    const id = (tx as { customer_id: string }).customer_id
+    redeemCountMap.set(id, (redeemCountMap.get(id) ?? 0) + 1)
   }
 
-  const hasError = !!(custErr || countErr)
+  // Compute segment for each customer (DB uses visit_count; computeSegment expects total_visits)
+  const allWithSegment = (customers ?? []).map(c => ({
+    ...c,
+    computedSegment: computeSegment(
+      { ...c, total_visits: c.visit_count ?? 0 },
+      redeemCountMap.get(c.id) ?? 0,
+    ),
+  }))
 
+  console.log(`[customers] loaded ${allWithSegment.length} customers (mock: 0)`)
+
+  // Apply segment tab filter
+  const filtered = seg === 'all'
+    ? allWithSegment
+    : allWithSegment.filter(c => c.computedSegment === seg)
+
+  // Tab counts (before segment filter, after search/branch filter)
   const segCounts = Object.fromEntries(
-    ['all', 'vip', 'returning', 'new', 'inactive'].map(s => [
+    ['all', ...ALL_SEGMENTS].map(s => [
       s,
-      s === 'all' ? allCounts.length : allCounts.filter(c => c.segment === s).length,
+      s === 'all'
+        ? allWithSegment.length
+        : allWithSegment.filter(c => c.computedSegment === s).length,
     ])
   )
 
-  // Summary stats of visible rows
-  const totalSpending = filtered.reduce((s, c) => s + Number(c.total_spending), 0)
-  const totalPoints   = filtered.reduce((s, c) => s + c.total_points, 0)
-  const avgSpending   = filtered.length > 0 ? Math.round(totalSpending / filtered.length) : 0
-  const avgVisits     = filtered.length > 0
-    ? (filtered.reduce((s, c) => s + c.visit_count, 0) / filtered.length).toFixed(1)
+  const hasError = !!custErr
+
+  // Summary stats
+  const totalPoints = filtered.reduce((s, c) => s + (c.total_points ?? 0), 0)
+  const avgVisits   = filtered.length > 0
+    ? (filtered.reduce((s, c) => s + (c.visit_count ?? 0), 0) / filtered.length).toFixed(1)
     : '0'
 
   function buildTabHref(value: string) {
@@ -112,7 +118,7 @@ export default async function CustomersPage({
     <div className="flex flex-1 flex-col overflow-hidden">
       <Topbar
         title="Members"
-        subtitle={`${fmt(allCounts.length)} members · shared loyalty across all branches`}
+        subtitle={`${fmt(allWithSegment.length)} members · shared loyalty across all branches`}
         branches={branches ?? []}
         activeBranch={branchFilter}
       />
@@ -124,14 +130,14 @@ export default async function CustomersPage({
           <div className="flex items-center gap-3 rounded-xl bg-red-50 border border-red-100 px-4 py-3">
             <AlertCircle size={14} className="text-red-500 flex-shrink-0" />
             <p className="text-xs text-red-700">
-              Could not load customer data. Check your Supabase credentials in <code className="font-mono bg-red-100 px-1 rounded">.env.local</code> and ensure the service role key is set.
+              Could not load member data. Check your Supabase credentials in <code className="font-mono bg-red-100 px-1 rounded">.env.local</code>.
             </p>
           </div>
         )}
 
         {/* ── Toolbar ── */}
         <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
-          {/* Segment tabs — scrollable on mobile */}
+          {/* Segment tabs */}
           <div className="flex items-center gap-1 rounded-xl bg-white border border-gray-100 shadow-sm p-1 overflow-x-auto no-scrollbar">
             {TABS.map(t => (
               <Link
@@ -147,7 +153,7 @@ export default async function CustomersPage({
                 <span className={`ml-1.5 rounded-full px-1.5 py-0.5 text-[9px] font-semibold ${
                   seg === t.value ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-500'
                 }`}>
-                  {segCounts[t.value]}
+                  {segCounts[t.value] ?? 0}
                 </span>
               </Link>
             ))}
@@ -167,8 +173,8 @@ export default async function CustomersPage({
         {(q || seg !== 'all' || branchFilter) && (
           <p className="text-[11px] text-gray-400">
             {filtered.length === 0
-              ? 'No customers match your filters'
-              : `Showing ${filtered.length} customer${filtered.length !== 1 ? 's' : ''}${q ? ` for "${q}"` : ''}`
+              ? 'No members match your filters'
+              : `Showing ${filtered.length} member${filtered.length !== 1 ? 's' : ''}${q ? ` for "${q}"` : ''}${seg !== 'all' ? ` · ${SEGMENT_META[seg as Segment]?.label ?? seg}` : ''}`
             }
           </p>
         )}
@@ -180,7 +186,7 @@ export default async function CustomersPage({
               <Users size={32} className="text-gray-200" />
               <div className="text-center">
                 <p className="text-sm font-medium text-gray-400">
-                  {hasError ? 'Could not load customers' : 'No customers yet'}
+                  {hasError ? 'Could not load members' : 'No members yet'}
                 </p>
                 <p className="text-xs text-gray-300 mt-0.5">
                   {hasError
@@ -188,13 +194,11 @@ export default async function CustomersPage({
                     : q
                     ? `No results for "${q}" — try a different search`
                     : seg !== 'all'
-                    ? `No ${seg} customers${branchFilter ? ' at this branch' : ''}`
-                    : 'Add your first customer using the button above'}
+                    ? `No ${SEGMENT_META[seg as Segment]?.label ?? seg} members${branchFilter ? ' at this branch' : ''}`
+                    : 'Add your first member using the button above'}
                 </p>
               </div>
-              {!hasError && !q && seg === 'all' && (
-                <AddCustomerModal />
-              )}
+              {!hasError && !q && seg === 'all' && <AddCustomerModal />}
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -212,16 +216,15 @@ export default async function CustomersPage({
                 </thead>
                 <CustomerTableBody
                   customers={filtered.map(c => ({
-                    id: c.id,
-                    name: c.name,
-                    phone: c.phone,
-                    segment: c.segment,
+                    id:             c.id,
+                    name:           c.name,
+                    phone:          c.phone,
+                    segment:        c.computedSegment,
                     home_branch_id: c.home_branch_id,
-                    total_points: c.total_points ?? 0,
-                    total_spending: Number(c.total_spending ?? 0),
-                    visit_count: c.visit_count ?? 0,
-                    last_visit_at: c.last_visit_at,
-                    branch: (branches ?? []).find(b => b.id === c.home_branch_id) ?? null,
+                    total_points:   c.total_points ?? 0,
+                    visit_count:    c.visit_count ?? 0,
+                    last_visit_at:  c.last_visit_at,
+                    branch:         (branches ?? []).find(b => b.id === c.home_branch_id) ?? null,
                   }))}
                   query={q}
                 />
@@ -234,7 +237,7 @@ export default async function CustomersPage({
         {debugMode && (
           <div className="rounded-xl border border-yellow-200 bg-yellow-50 p-4 text-xs font-mono space-y-3">
             <p className="font-bold text-yellow-800 text-[11px] uppercase tracking-wide">
-              Debug panel — ?debug=1 — {filtered.length} row(s) from Supabase
+              Debug — ?debug=1 — {filtered.length} row(s) · seg={seg}
             </p>
             {custErr && (
               <p className="text-red-700 font-semibold">Supabase error: {custErr.message} (code: {custErr.code})</p>
@@ -245,19 +248,21 @@ export default async function CustomersPage({
                   <th className="text-left py-1 pr-4 font-semibold">#</th>
                   <th className="text-left py-1 pr-4 font-semibold">id</th>
                   <th className="text-left py-1 pr-4 font-semibold">name</th>
-                  <th className="text-left py-1 font-semibold">phone</th>
+                  <th className="text-left py-1 pr-4 font-semibold">phone</th>
+                  <th className="text-left py-1 font-semibold">segment</th>
                 </tr>
               </thead>
               <tbody>
                 {filtered.length === 0 ? (
-                  <tr><td colSpan={4} className="py-2 text-yellow-600 italic">No customers returned</td></tr>
+                  <tr><td colSpan={5} className="py-2 text-yellow-600 italic">No members returned</td></tr>
                 ) : (
                   filtered.map((c, i) => (
                     <tr key={c.id} className="border-b border-yellow-100">
                       <td className="py-1 pr-4 text-yellow-500">{i + 1}</td>
                       <td className="py-1 pr-4 text-yellow-900 break-all">{c.id}</td>
                       <td className="py-1 pr-4 text-yellow-900">{c.name ?? '—'}</td>
-                      <td className="py-1 text-yellow-900">{c.phone ?? '—'}</td>
+                      <td className="py-1 pr-4 text-yellow-900">{c.phone ?? '—'}</td>
+                      <td className="py-1 text-yellow-900">{c.computedSegment}</td>
                     </tr>
                   ))
                 )}
@@ -266,7 +271,7 @@ export default async function CustomersPage({
           </div>
         )}
 
-        {/* ── Summary stats (loyalty metrics only) ── */}
+        {/* ── Summary stats ── */}
         {filtered.length > 0 && (
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
             {[
@@ -284,18 +289,5 @@ export default async function CustomersPage({
 
       </main>
     </div>
-  )
-}
-
-function HighlightMatch({ text, query }: { text: string; query: string }) {
-  if (!query) return <>{text}</>
-  const idx = text.toLowerCase().indexOf(query.toLowerCase())
-  if (idx === -1) return <>{text}</>
-  return (
-    <>
-      {text.slice(0, idx)}
-      <mark className="bg-brand-100 text-brand-800 rounded px-0.5 not-italic">{text.slice(idx, idx + query.length)}</mark>
-      {text.slice(idx + query.length)}
-    </>
   )
 }

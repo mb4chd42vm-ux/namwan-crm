@@ -1,6 +1,10 @@
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-export type Segment = 'new' | 'returning' | 'vip' | 'inactive'
+// Segment is now defined in @/lib/segments — imported for use within this file and re-exported
+import type { Segment } from '@/lib/segments'
+export type { Segment }
+export { SEGMENT_META } from '@/lib/segments'
+
 export type TxType  = 'earn' | 'redeem' | 'adjust' | 'expire'
 
 export interface Branch {
@@ -11,7 +15,7 @@ export interface Customer {
   id: string; name: string; phone: string; lineId: string | null
   birthday: string | null; notes: string | null
   points: number; spending: number; visits: number
-  segment: Segment; branchId: string; lastVisit: string; joinedAt: string
+  segment: string; branchId: string; lastVisit: string; joinedAt: string
 }
 
 export interface MenuItem { name: string; qty: number; price: number }
@@ -139,13 +143,6 @@ export const MONTHLY_SALES: MonthlyStat[] = [
 ]
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-
-export const SEGMENT_META: Record<Segment, { label: string; color: string; bg: string; dot: string }> = {
-  new:       { label:'New',       color:'text-blue-700',  bg:'bg-blue-50  border border-blue-200',   dot:'bg-blue-500'  },
-  returning: { label:'Returning', color:'text-green-700', bg:'bg-green-50 border border-green-200',  dot:'bg-green-500' },
-  vip:       { label:'VIP',       color:'text-amber-700', bg:'bg-amber-50 border border-amber-200',  dot:'bg-amber-500' },
-  inactive:  { label:'Inactive',  color:'text-gray-500',  bg:'bg-gray-50  border border-gray-200',   dot:'bg-gray-400'  },
-}
 
 export const TX_META: Record<TxType, { label: string; color: string; bg: string }> = {
   earn:   { label:'Earn',   color:'text-green-700', bg:'bg-green-50  border border-green-200'  },

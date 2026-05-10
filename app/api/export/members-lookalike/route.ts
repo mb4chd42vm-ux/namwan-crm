@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getCurrentSession } from '@/lib/auth'
 import { createClient } from '@/lib/supabase/server'
+import { computeSegment, SEGMENT_META, type Segment } from '@/lib/segments'
 
 const LABEL = '[export-members]'
 
@@ -20,15 +21,16 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    const allMembers = request.nextUrl.searchParams.get('all') === '1'
-    console.log(`${LABEL} export by ${session.profile.name} (${role}), all=${allMembers}`)
+    const allMembers    = request.nextUrl.searchParams.get('all') === '1'
+    const segmentFilter = request.nextUrl.searchParams.get('segment') ?? null
+    console.log(`${LABEL} export by ${session.profile.name} (${role}), all=${allMembers}, segment=${segmentFilter}`)
 
     const supabase = await createClient()
 
     let query = supabase
       .from('customers')
       .select(
-        'name, phone, birthday, gender, area_or_province, region, home_branch_id, favorite_branch_id, discovered_from, marketing_consent, total_points, visit_count, created_at, line_id',
+        'id, name, phone, birthday, gender, area_or_province, region, home_branch_id, favorite_branch_id, discovered_from, marketing_consent, total_points, visit_count, last_visit_at, created_at, line_id',
       )
       .eq('is_active', true)
       .order('created_at', { ascending: false })
@@ -37,9 +39,10 @@ export async function GET(request: NextRequest) {
       query = query.eq('marketing_consent', true)
     }
 
-    const [{ data: customers, error }, { data: branches }] = await Promise.all([
+    const [{ data: customers, error }, { data: branches }, { data: redeemTxs }] = await Promise.all([
       query,
       supabase.from('branches').select('id, name').eq('is_active', true),
+      supabase.from('points_transactions').select('customer_id').eq('type', 'redeem'),
     ])
 
     if (error) {
@@ -48,6 +51,26 @@ export async function GET(request: NextRequest) {
     }
 
     const branchMap = new Map((branches ?? []).map(b => [b.id, b.name]))
+
+    // Build redeem count map for segment computation
+    const redeemCountMap = new Map<string, number>()
+    for (const tx of redeemTxs ?? []) {
+      const id = (tx as { customer_id: string }).customer_id
+      redeemCountMap.set(id, (redeemCountMap.get(id) ?? 0) + 1)
+    }
+
+    // Compute segment and optionally filter by segment
+    let rows_data = (customers ?? []).map(c => ({
+      ...c,
+      computedSegment: computeSegment(
+        { created_at: c.created_at, last_visit_at: c.last_visit_at ?? null, total_visits: c.visit_count ?? 0, total_points: c.total_points ?? 0 },
+        redeemCountMap.get(c.id) ?? 0,
+      ),
+    }))
+
+    if (segmentFilter) {
+      rows_data = rows_data.filter(c => c.computedSegment === segmentFilter)
+    }
 
     const headers = [
       'full_name',
@@ -58,6 +81,7 @@ export async function GET(request: NextRequest) {
       'region',
       'favorite_branch',
       'discovered_from',
+      'segment',
       'marketing_consent',
       'points_balance',
       'total_visits',
@@ -65,7 +89,7 @@ export async function GET(request: NextRequest) {
       'line_id',
     ]
 
-    const rows = (customers ?? []).map(c => [
+    const rows = rows_data.map(c => [
       c.name ?? '',
       formatPhone(c.phone ?? ''),
       c.birthday ?? '',
@@ -76,6 +100,7 @@ export async function GET(request: NextRequest) {
         branchMap.get(c.home_branch_id ?? '') ??
         '',
       c.discovered_from ?? '',
+      SEGMENT_META[c.computedSegment as Segment]?.label ?? c.computedSegment,
       c.marketing_consent ? 'yes' : 'no',
       String(c.total_points ?? 0),
       String(c.visit_count ?? 0),
