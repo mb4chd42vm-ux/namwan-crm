@@ -30,31 +30,28 @@ export default function ClaimForm({
   const [error,   setError]          = useState<string | null>(null)
   const [claimed, setClaimed]        = useState<{ points: number; drinkQuantity: number } | null>(null)
 
-  // LINE identification (optional — forceLogin=false so we don't redirect)
-  const liff = useLiff(false)
-  const [lineCustomer,     setLineCustomer]     = useState<ResolvedCustomer | null>(null)
-  const [lineCheckDone,    setLineCheckDone]    = useState(false)
-  const [lineNotFound,     setLineNotFound]     = useState(false)
+  // LINE identification (optional — hook never auto-redirects on claim page)
+  const liff = useLiff()
+  const [lineCustomer,  setLineCustomer]  = useState<ResolvedCustomer | null>(null)
+  const [lineCheckDone, setLineCheckDone] = useState(false)
+  const [lineNotFound,  setLineNotFound]  = useState(false)
 
   // When LIFF is ready, look up the customer by line_id server-side
   useEffect(() => {
-    if (liff.status === 'unavailable' || liff.status === 'not_logged_in') {
+    // Any non-ready terminal state → skip LIFF, fall back to phone
+    if (liff.status === 'unavailable' || liff.status === 'not_logged_in' || liff.status === 'error') {
       setLineCheckDone(true)
       return
     }
-    if (liff.status === 'error') {
-      setLineCheckDone(true)
-      return
-    }
-    if (liff.status !== 'ready') return
+    if (liff.status !== 'ready' || !liff.profile) return
 
     // LIFF ready → resolve customer by line_id
     ;(async () => {
       try {
         const res  = await fetch('/api/liff/me', {
-          method: 'POST',
+          method:  'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ line_id: liff.profile.userId }),
+          body:    JSON.stringify({ line_id: liff.profile!.userId }),
         })
         const data = await res.json()
 
@@ -64,12 +61,12 @@ export default function ClaimForm({
           setLineNotFound(true)
         }
       } catch {
-        // Ignore — fall back to phone
+        // Ignore — fall back to phone form silently
       } finally {
         setLineCheckDone(true)
       }
     })()
-  }, [liff.status])
+  }, [liff.status, liff.profile])
 
   // Phone-based match (shown when LINE not available or customer not found)
   const phoneMatched: ResolvedCustomer | null =

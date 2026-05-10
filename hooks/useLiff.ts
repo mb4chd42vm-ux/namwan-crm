@@ -1,6 +1,8 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+
+// ── Types ─────────────────────────────────────────────────────────────────────
 
 export interface LiffProfile {
   userId:      string
@@ -8,27 +10,40 @@ export interface LiffProfile {
   pictureUrl?: string
 }
 
-export type LiffState =
-  | { status: 'loading' }
-  | { status: 'unavailable' }                            // no LIFF_ID configured
-  | { status: 'error'; message: string }
-  | { status: 'not_logged_in'; login: () => void }       // in browser, not yet authed
-  | { status: 'ready'; profile: LiffProfile; inClient: boolean }
+export type LiffStatus =
+  | 'loading'       // LIFF SDK initializing
+  | 'unavailable'   // NEXT_PUBLIC_LIFF_ID not set
+  | 'error'         // liff.init() threw, or getProfile() failed
+  | 'not_logged_in' // outside LINE app and no active session
+  | 'ready'         // profile available
 
-/**
- * Initialize LIFF and return the current auth state.
- *
- * @param forceLogin  When true, automatically triggers liff.login() if the
- *                    user is not yet authenticated (used on the /member page).
- *                    When false (default), returns status 'not_logged_in' so
- *                    the caller can decide what to do (used on /claim pages).
- */
-export function useLiff(forceLogin = false): LiffState {
+export interface LiffHook {
+  status:     LiffStatus
+  profile:    LiffProfile | null
+  error:      string | null
+  isInClient: boolean   // true when running inside the LINE app
+  isLoggedIn: boolean   // true when there is an active LIFF access token
+  login:      () => void
+  logout:     () => void
+}
+
+// ── Hook ──────────────────────────────────────────────────────────────────────
+
+export function useLiff(): LiffHook {
   const liffId = process.env.NEXT_PUBLIC_LIFF_ID
 
-  const [state, setState] = useState<LiffState>(
-    liffId ? { status: 'loading' } : { status: 'unavailable' },
+  const [status,     setStatus]     = useState<LiffStatus>(liffId ? 'loading' : 'unavailable')
+  const [profile,    setProfile]    = useState<LiffProfile | null>(null)
+  const [error,      setError]      = useState<string | null>(
+    liffId ? null : 'NEXT_PUBLIC_LIFF_ID is not configured',
   )
+  const [isInClient, setIsInClient] = useState(false)
+  const [isLoggedIn, setIsLoggedIn] = useState(false)
+
+  // Stable refs to liff SDK so login/logout work after init without re-running the effect
+  const liffRef          = useRef<{ login: (o?: { redirectUri?: string }) => void; logout: () => void; isLoggedIn: () => boolean } | null>(null)
+  // Guard: only auto-login once per mount to prevent infinite redirect loops
+  const autoLoginFiredRef = useRef(false)
 
   useEffect(() => {
     if (!liffId) return
@@ -38,46 +53,66 @@ export function useLiff(forceLogin = false): LiffState {
     ;(async () => {
       try {
         const liff = (await import('@line/liff')).default
-        await liff.init({ liffId })
+        liffRef.current = liff
 
+        await liff.init({ liffId })
         if (cancelled) return
 
-        if (!liff.isLoggedIn()) {
-          if (forceLogin) {
+        const inClient = liff.isInClient()
+        const loggedIn = liff.isLoggedIn()
+
+        setIsInClient(inClient)
+        setIsLoggedIn(loggedIn)
+
+        if (!loggedIn) {
+          if (inClient && !autoLoginFiredRef.current) {
+            // Inside the LINE app but somehow no token — trigger login once.
+            // The LINE app will resolve this instantly and redirect back with a token.
+            autoLoginFiredRef.current = true
             liff.login({ redirectUri: window.location.href })
-            return // page will redirect away
+            return // page navigates away; effect cleanup runs when it returns
           }
-          setState({
-            status: 'not_logged_in',
-            login: () => liff.login({ redirectUri: window.location.href }),
-          })
+
+          // Browser with no session → surface login button, never auto-redirect
+          setStatus('not_logged_in')
           return
         }
 
-        const profile = await liff.getProfile()
+        // Already logged in (in-client or browser OAuth session)
+        const p = await liff.getProfile()
         if (cancelled) return
 
-        setState({
-          status: 'ready',
-          profile: {
-            userId:      profile.userId,
-            displayName: profile.displayName,
-            pictureUrl:  profile.pictureUrl ?? undefined,
-          },
-          inClient: liff.isInClient(),
+        setProfile({
+          userId:      p.userId,
+          displayName: p.displayName,
+          pictureUrl:  p.pictureUrl ?? undefined,
         })
+        setStatus('ready')
       } catch (err) {
         if (!cancelled) {
-          setState({
-            status: 'error',
-            message: err instanceof Error ? err.message : 'LIFF initialization failed',
-          })
+          setError(err instanceof Error ? err.message : 'LIFF initialization failed')
+          setStatus('error')
         }
       }
     })()
 
     return () => { cancelled = true }
-  }, [liffId, forceLogin])
+  }, [liffId]) // intentionally stable — liffId never changes at runtime
 
-  return state
+  function login() {
+    if (liffRef.current) {
+      liffRef.current.login({ redirectUri: window.location.href })
+    }
+  }
+
+  function logout() {
+    if (liffRef.current && liffRef.current.isLoggedIn()) {
+      liffRef.current.logout()
+      setStatus('not_logged_in')
+      setProfile(null)
+      setIsLoggedIn(false)
+    }
+  }
+
+  return { status, profile, error, isInClient, isLoggedIn, login, logout }
 }
