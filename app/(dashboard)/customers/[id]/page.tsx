@@ -3,12 +3,14 @@ import Link from 'next/link'
 import {
   ArrowLeft, Phone, Calendar, Star, ShoppingBag,
   Hash, Clock, Cake, MessageSquare, TrendingUp,
-  Pencil, Store,
+  Pencil, Store, AlertTriangle,
 } from 'lucide-react'
 import RedeemPointsModal from '@/components/points/RedeemPointsModal'
 import { SEGMENT_META, TX_META, thb, pts, fmt, type Segment, type TxType } from '@/data/mock'
 import { createClient } from '@/lib/supabase/server'
-import { notFound } from 'next/navigation'
+
+// Always fetch fresh — never serve a stale/deleted customer from cache
+export const dynamic = 'force-dynamic'
 
 export default async function CustomerDetailPage({
   params,
@@ -16,10 +18,13 @@ export default async function CustomerDetailPage({
   params: Promise<{ id: string }>
 }) {
   const { id } = await params
+
+  console.log('[customer-detail] params.id:', id)
+
   const supabase = await createClient()
 
   const [
-    { data: customer },
+    { data: customer, error: customerErr },
     { data: purchases },
     { data: pointsTxs },
     { data: branches },
@@ -49,7 +54,37 @@ export default async function CustomerDetailPage({
       .order('sort_order'),
   ])
 
-  if (!customer) notFound()
+  if (customerErr) {
+    console.error('[customer-detail] query error for id', id, customerErr)
+  }
+
+  if (!customer) {
+    return (
+      <div className="flex flex-1 flex-col overflow-hidden">
+        <Topbar title="Customer not found" subtitle="" branches={branches ?? []} />
+        <main className="flex-1 flex flex-col items-center justify-center gap-5 px-6 py-16 text-center">
+          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-red-50 border border-red-100">
+            <AlertTriangle size={28} className="text-red-400" />
+          </div>
+          <div className="space-y-1.5">
+            <p className="text-base font-bold text-gray-900">Customer not found</p>
+            <p className="text-sm text-gray-400">
+              This customer may have been deleted or the link is invalid.
+            </p>
+            {process.env.NODE_ENV !== 'production' && (
+              <p className="text-[11px] font-mono text-gray-300 mt-2">id: {id}</p>
+            )}
+          </div>
+          <Link
+            href="/customers"
+            className="inline-flex items-center gap-2 rounded-xl bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-700 transition-colors"
+          >
+            <ArrowLeft size={14} /> Back to Customers
+          </Link>
+        </main>
+      </div>
+    )
+  }
 
   const homeBranch  = customer.branches as unknown as { name: string; color_hex: string } | null
   const segment     = customer.segment as Segment
