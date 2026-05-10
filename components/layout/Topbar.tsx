@@ -1,17 +1,18 @@
 'use client'
 
 import { useRouter, usePathname } from 'next/navigation'
-import { LogOut, ChevronDown, Search } from 'lucide-react'
+import { LogOut, ChevronDown, Search, Menu } from 'lucide-react'
 import { useUser, type Role } from '@/components/layout/UserContext'
 import { logout } from '@/app/actions/auth'
+import { useSidebar } from '@/components/layout/SidebarContext'
 import { useState, useRef, useEffect } from 'react'
 
 interface BranchOption { id: string; name: string }
 
 interface Props {
-  title:        string
-  subtitle?:    string
-  branches?:    BranchOption[]
+  title:         string
+  subtitle?:     string
+  branches?:     BranchOption[]
   activeBranch?: string | null
 }
 
@@ -31,6 +32,7 @@ export default function Topbar({ title, subtitle, branches = [], activeBranch }:
   const router   = useRouter()
   const pathname = usePathname()
   const user     = useUser()
+  const { toggle } = useSidebar()
 
   const [menuOpen, setMenuOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
@@ -56,7 +58,16 @@ export default function Topbar({ title, subtitle, branches = [], activeBranch }:
   const roleColor = user ? ROLE_COLORS[user.role] : 'bg-gray-400'
 
   return (
-    <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b border-gray-100 bg-white/80 backdrop-blur px-6">
+    <header className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b border-gray-100 bg-white/80 backdrop-blur px-4 sm:px-6">
+
+      {/* Hamburger — mobile only */}
+      <button
+        onClick={toggle}
+        className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg text-gray-500 hover:bg-gray-100 transition-colors lg:hidden"
+        aria-label="Open menu"
+      >
+        <Menu size={18} />
+      </button>
 
       {/* Page title */}
       <div className="min-w-0 flex-1">
@@ -64,7 +75,7 @@ export default function Topbar({ title, subtitle, branches = [], activeBranch }:
         {subtitle && <p className="text-[11px] text-gray-400">{subtitle}</p>}
       </div>
 
-      {/* Branch filter pills */}
+      {/* Branch filter pills — medium+ only */}
       {branches.length > 0 && (
         <div className="hidden md:flex items-center gap-1 rounded-xl bg-gray-100 p-1">
           <button
@@ -91,7 +102,7 @@ export default function Topbar({ title, subtitle, branches = [], activeBranch }:
 
       {/* Right controls */}
       <div className="flex items-center gap-2">
-        <button className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 transition-colors">
+        <button className="hidden sm:flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 transition-colors">
           <Search size={15} />
         </button>
 

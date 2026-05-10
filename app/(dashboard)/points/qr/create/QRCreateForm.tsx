@@ -70,7 +70,7 @@ export default function QRCreateForm({
   const selectedBranch = branches.find(b => b.id === branchId)
 
   return (
-    <div className="mx-auto w-full max-w-lg space-y-4">
+    <div className="mx-auto w-full max-w-md space-y-4">
 
       {result ? (
         /* ── QR display ── */
@@ -82,22 +82,23 @@ export default function QRCreateForm({
             </p>
           </div>
 
-          {/* Large QR code */}
+          {/* Large QR code — responsive, max 320px */}
           <div
-            className="inline-flex items-center justify-center rounded-2xl border-4 border-amber-100 bg-white p-4 shadow-inner mx-auto [&>svg]:w-52 [&>svg]:h-52 sm:[&>svg]:w-64 sm:[&>svg]:h-64"
+            className="mx-auto w-full max-w-[320px] flex items-center justify-center rounded-2xl border-4 border-amber-100 bg-white p-4 shadow-inner [&>svg]:w-full [&>svg]:h-auto"
             dangerouslySetInnerHTML={{ __html: result.qrSvg }}
           />
 
-          {/* Copy link */}
+          {/* Copy link — full width */}
           <button
             onClick={copyLink}
-            className="inline-flex items-center gap-2 rounded-xl border border-gray-200 px-5 py-3 text-sm font-semibold text-gray-600 hover:bg-gray-50 transition-colors"
+            className="w-full flex items-center justify-center gap-2 rounded-xl border border-gray-200 h-12 text-sm font-semibold text-gray-600 hover:bg-gray-50 transition-colors"
           >
             {copied ? <CheckCircle size={15} className="text-emerald-500" /> : <Copy size={15} />}
             {copied ? 'Copied!' : 'Copy claim link'}
           </button>
 
-          <p className="text-sm text-amber-600 bg-amber-50 border border-amber-100 rounded-xl px-4 py-3">
+          {/* Expiry — full width */}
+          <p className="text-sm text-amber-600 bg-amber-50 border border-amber-100 rounded-xl px-4 py-3 text-center">
             QR expires at {new Date(result.expiresAt).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}
           </p>
 
@@ -117,13 +118,13 @@ export default function QRCreateForm({
             <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">
               Branch *
             </label>
-            <div className="flex gap-2 flex-wrap">
+            <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
               {branches.map(b => (
                 <button
                   key={b.id}
                   type="button"
                   onClick={() => setBranchId(b.id)}
-                  className={`flex items-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-semibold transition-all ${
+                  className={`flex items-center gap-2 rounded-xl border px-4 py-3 text-sm font-semibold transition-all ${
                     branchId === b.id
                       ? 'border-transparent text-white shadow-sm'
                       : 'border-gray-200 text-gray-600 bg-white hover:border-gray-300'

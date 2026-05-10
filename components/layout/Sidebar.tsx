@@ -4,16 +4,17 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
   LayoutDashboard, Users, ShoppingBag, Star,
-  Store, Megaphone, Settings, LogOut, UserCog, CreditCard,
+  Store, Megaphone, Settings, LogOut, UserCog, CreditCard, X,
 } from 'lucide-react'
 import { logout } from '@/app/actions/auth'
+import { useSidebar } from './SidebarContext'
 import type { Role } from '@/lib/auth'
 
 interface NavItem {
   href:      string
   label:     string
   icon:      React.ElementType
-  minRole?:  Role   // minimum role required; omit = all roles
+  minRole?:  Role
 }
 
 const NAV: NavItem[] = [
@@ -53,96 +54,126 @@ interface SidebarUser {
 
 export default function Sidebar({ user }: { user: SidebarUser }) {
   const path = usePathname()
+  const { isOpen, close } = useSidebar()
 
   const visibleNav = NAV.filter(item => hasAccess(user.role, item.minRole))
   const initial    = user.name.charAt(0).toUpperCase()
 
   return (
-    <aside className="flex h-screen w-60 flex-col bg-white border-r border-gray-100 shadow-[1px_0_0_0_#f3f4f6]">
+    <>
+      {/* Mobile backdrop */}
+      {isOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/50 lg:hidden"
+          onClick={close}
+          aria-hidden="true"
+        />
+      )}
 
-      {/* Logo */}
-      <div className="flex items-center gap-3 px-5 py-5 border-b border-gray-100">
-        <div className="relative flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-brand-500 to-brand-700 shadow-md shadow-brand-200">
-          <svg viewBox="0 0 24 24" className="w-5 h-5 text-white fill-current">
-            <path d="M3.5 18.5L7 14l4 2-1.5 4H3.5zm17-13L17 9.5l-2-4 1.5-4.5 4 4.5zM12 13l-5-2.5 7.5-7.5L17 8 12 13z"/>
-          </svg>
-        </div>
-        <div>
-          <p className="text-[13px] font-bold text-gray-900 leading-none">Namwan CRM</p>
-          <p className="text-[10px] text-gray-400 mt-0.5">{ROLE_LABELS[user.role]} Portal</p>
-        </div>
-      </div>
+      <aside className={[
+        // Mobile: fixed drawer, slide in/out
+        'fixed inset-y-0 left-0 z-50 flex h-screen w-72 flex-col bg-white border-r border-gray-100',
+        'transition-transform duration-200 ease-in-out',
+        isOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full',
+        // Desktop: in-flow, always visible, narrower
+        'lg:relative lg:w-60 lg:translate-x-0 lg:shadow-[1px_0_0_0_#f3f4f6]',
+      ].join(' ')}>
 
-      {/* Nav */}
-      <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
-        <p className="px-2 pb-2 text-[10px] font-semibold uppercase tracking-widest text-gray-400">
-          Navigation
-        </p>
-        {visibleNav.map(({ href, label, icon: Icon }) => {
-          const active = path === href || path.startsWith(href + '/')
-          return (
-            <Link
-              key={href}
-              href={href}
-              className={`group flex items-center gap-3 rounded-xl px-3 py-2.5 text-[13px] font-medium transition-all ${
-                active
-                  ? 'bg-brand-50 text-brand-700'
-                  : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'
-              }`}
-            >
-              <Icon
-                size={16}
-                className={active ? 'text-brand-600' : 'text-gray-400 group-hover:text-gray-600'}
-              />
-              {label}
-              {active && (
-                <span className="ml-auto h-1.5 w-1.5 rounded-full bg-brand-500" />
-              )}
-            </Link>
-          )
-        })}
-      </nav>
-
-      {/* Bottom */}
-      <div className="border-t border-gray-100 px-3 py-3 space-y-0.5">
-        {/* User profile strip */}
-        <div className="flex items-center gap-2.5 rounded-xl px-3 py-2.5 mb-1">
-          <div className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full bg-brand-600 text-[11px] font-bold text-white">
-            {initial}
+        {/* Logo row */}
+        <div className="flex items-center gap-3 px-5 py-5 border-b border-gray-100">
+          <div className="relative flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-brand-500 to-brand-700 shadow-md shadow-brand-200">
+            <svg viewBox="0 0 24 24" className="w-5 h-5 text-white fill-current">
+              <path d="M3.5 18.5L7 14l4 2-1.5 4H3.5zm17-13L17 9.5l-2-4 1.5-4.5 4 4.5zM12 13l-5-2.5 7.5-7.5L17 8 12 13z"/>
+            </svg>
           </div>
           <div className="min-w-0 flex-1">
-            <p className="truncate text-[12px] font-semibold text-gray-800 leading-none">{user.name}</p>
-            <span className={`mt-0.5 inline-block rounded-full px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide ${ROLE_COLORS[user.role]}`}>
-              {ROLE_LABELS[user.role]}
-            </span>
+            <p className="text-[13px] font-bold text-gray-900 leading-none">Namwan CRM</p>
+            <p className="text-[10px] text-gray-400 mt-0.5">{ROLE_LABELS[user.role]} Portal</p>
           </div>
+          {/* Close button — mobile only */}
+          <button
+            onClick={close}
+            className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 transition-colors lg:hidden"
+            aria-label="Close menu"
+          >
+            <X size={17} />
+          </button>
         </div>
 
-        <Link
-          href="/member"
-          target="_blank"
-          className="flex items-center gap-3 rounded-xl px-3 py-2 text-[13px] font-medium text-gray-400 hover:bg-gray-50 hover:text-gray-700 transition-colors"
-        >
-          <CreditCard size={15} /> Member Portal ↗
-        </Link>
+        {/* Nav */}
+        <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
+          <p className="px-2 pb-2 text-[10px] font-semibold uppercase tracking-widest text-gray-400">
+            Navigation
+          </p>
+          {visibleNav.map(({ href, label, icon: Icon }) => {
+            const active = path === href || path.startsWith(href + '/')
+            return (
+              <Link
+                key={href}
+                href={href}
+                onClick={close}
+                className={`group flex items-center gap-3 rounded-xl px-3 py-3 text-[13px] font-medium transition-all lg:py-2.5 ${
+                  active
+                    ? 'bg-brand-50 text-brand-700'
+                    : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'
+                }`}
+              >
+                <Icon
+                  size={16}
+                  className={active ? 'text-brand-600' : 'text-gray-400 group-hover:text-gray-600'}
+                />
+                {label}
+                {active && (
+                  <span className="ml-auto h-1.5 w-1.5 rounded-full bg-brand-500" />
+                )}
+              </Link>
+            )
+          })}
+        </nav>
 
-        <Link
-          href="/settings"
-          className="flex items-center gap-3 rounded-xl px-3 py-2 text-[13px] font-medium text-gray-400 hover:bg-gray-50 hover:text-gray-700 transition-colors"
-        >
-          <Settings size={15} /> Settings
-        </Link>
+        {/* Bottom */}
+        <div className="border-t border-gray-100 px-3 py-3 space-y-0.5">
+          {/* User profile strip */}
+          <div className="flex items-center gap-2.5 rounded-xl px-3 py-2.5 mb-1">
+            <div className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full bg-brand-600 text-[11px] font-bold text-white">
+              {initial}
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-[12px] font-semibold text-gray-800 leading-none">{user.name}</p>
+              <span className={`mt-0.5 inline-block rounded-full px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide ${ROLE_COLORS[user.role]}`}>
+                {ROLE_LABELS[user.role]}
+              </span>
+            </div>
+          </div>
 
-        <form action={logout}>
-          <button
-            type="submit"
-            className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-[13px] font-medium text-gray-400 hover:bg-red-50 hover:text-red-600 transition-colors"
+          <Link
+            href="/member"
+            target="_blank"
+            onClick={close}
+            className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-[13px] font-medium text-gray-400 hover:bg-gray-50 hover:text-gray-700 transition-colors lg:py-2"
           >
-            <LogOut size={15} /> Sign Out
-          </button>
-        </form>
-      </div>
+            <CreditCard size={15} /> Member Portal ↗
+          </Link>
 
-    </aside>
+          <Link
+            href="/settings"
+            onClick={close}
+            className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-[13px] font-medium text-gray-400 hover:bg-gray-50 hover:text-gray-700 transition-colors lg:py-2"
+          >
+            <Settings size={15} /> Settings
+          </Link>
+
+          <form action={logout}>
+            <button
+              type="submit"
+              className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-[13px] font-medium text-gray-400 hover:bg-red-50 hover:text-red-600 transition-colors lg:py-2"
+            >
+              <LogOut size={15} /> Sign Out
+            </button>
+          </form>
+        </div>
+
+      </aside>
+    </>
   )
 }

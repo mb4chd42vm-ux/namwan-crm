@@ -25,7 +25,7 @@ export default async function QRCreatePage() {
 
   return (
     <div className="flex flex-1 flex-col overflow-hidden">
-      <div className="flex items-center gap-3 border-b border-gray-100 bg-white px-6 py-4">
+      <div className="flex items-center gap-3 border-b border-gray-100 bg-white px-4 py-4 sm:px-6">
         <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-amber-100">
           <QrCode size={15} className="text-amber-600" />
         </div>
@@ -35,7 +35,7 @@ export default async function QRCreatePage() {
         </div>
       </div>
 
-      <main className="flex-1 overflow-y-auto px-6 py-6">
+      <main className="flex-1 overflow-y-auto px-4 py-4 sm:px-6 sm:py-6 pb-safe">
         <QRCreateForm
           branches={branches ?? []}
           defaultBranchId={defaultBranchId}
