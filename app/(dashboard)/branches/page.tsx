@@ -1,6 +1,6 @@
 import Topbar from '@/components/layout/Topbar'
-import { MapPin, Users, ShoppingBag, Star, GitBranch } from 'lucide-react'
-import { thb, fmt } from '@/data/mock'
+import { MapPin, Users, Star, GitBranch, Gift } from 'lucide-react'
+import { fmt } from '@/data/mock'
 import { createClient } from '@/lib/supabase/server'
 
 export default async function BranchesPage() {
@@ -9,7 +9,6 @@ export default async function BranchesPage() {
   const [
     { data: branches },
     { data: customers },
-    { data: purchases },
     { data: pointsTxs },
   ] = await Promise.all([
     supabase
@@ -20,22 +19,17 @@ export default async function BranchesPage() {
 
     supabase
       .from('customers')
-      .select('id, name, phone, segment, home_branch_id, total_spending')
+      .select('id, name, segment, home_branch_id, total_points')
       .eq('is_active', true),
-
-    supabase
-      .from('purchases')
-      .select('branch_id, total_amount, points_earned'),
 
     supabase
       .from('points_transactions')
       .select('branch_id, type, points'),
   ])
 
-  const allBranches   = branches  ?? []
-  const allCustomers  = customers ?? []
-  const allPurchases  = purchases ?? []
-  const allTxs        = pointsTxs ?? []
+  const allBranches  = branches  ?? []
+  const allCustomers = customers ?? []
+  const allTxs       = pointsTxs ?? []
 
   // Derive accent colour from color_hex (lighten it for background)
   function hexAccent(hex: string): string {
@@ -50,22 +44,18 @@ export default async function BranchesPage() {
 
   const branchData = allBranches.map(b => {
     const bCustomers  = allCustomers.filter(c => c.home_branch_id === b.id)
-    const bPurchases  = allPurchases.filter(p => p.branch_id === b.id)
-    const revenue     = bPurchases.reduce((s, p) => s + Number(p.total_amount), 0)
     const ptsEarned   = allTxs.filter(t => t.branch_id === b.id && t.type === 'earn').reduce((s, t) => s + t.points, 0)
     const ptsRedeemed = allTxs.filter(t => t.branch_id === b.id && t.type === 'redeem').reduce((s, t) => s + Math.abs(t.points), 0)
     const vipCount    = bCustomers.filter(c => c.segment === 'vip').length
-    const topCustomer = [...bCustomers].sort((a, b) => Number(b.total_spending) - Number(a.total_spending))[0] ?? null
+    const topMember   = [...bCustomers].sort((a, b) => b.total_points - a.total_points)[0] ?? null
     return {
       ...b,
       accent:      hexAccent(b.color_hex),
       customers:   bCustomers,
-      purchases:   bPurchases,
-      revenue,
       ptsEarned,
       ptsRedeemed,
       vipCount,
-      topCustomer,
+      topMember,
     }
   })
 
@@ -111,10 +101,10 @@ export default async function BranchesPage() {
                   {/* Stats grid */}
                   <div className="grid grid-cols-2 gap-3">
                     {[
-                      { icon: ShoppingBag, label: 'Revenue',   value: thb(b.revenue),                color: 'text-brand-700' },
-                      { icon: Users,       label: 'Customers', value: fmt(b.customers.length),        color: 'text-blue-700'  },
-                      { icon: Star,        label: 'Earned',    value: fmt(b.ptsEarned) + ' pts',      color: 'text-amber-700' },
-                      { icon: Users,       label: 'VIP',       value: fmt(b.vipCount) + ' members',   color: 'text-purple-700'},
+                      { icon: Users,  label: 'Members',  value: fmt(b.customers.length),           color: 'text-blue-700'   },
+                      { icon: Star,   label: 'Earned',   value: fmt(b.ptsEarned) + ' pts',         color: 'text-amber-700'  },
+                      { icon: Gift,   label: 'Redeemed', value: fmt(b.ptsRedeemed) + ' pts',       color: 'text-brand-700'  },
+                      { icon: Users,  label: 'VIP',      value: fmt(b.vipCount) + ' members',      color: 'text-purple-700' },
                     ].map(s => (
                       <div key={s.label} className="rounded-xl p-3" style={{ background: b.accent }}>
                         <s.icon size={13} className="text-gray-400 mb-1" />
@@ -124,23 +114,23 @@ export default async function BranchesPage() {
                     ))}
                   </div>
 
-                  {/* Top customer */}
-                  {b.topCustomer ? (
+                  {/* Top member */}
+                  {b.topMember ? (
                     <div className="mt-4 flex items-center gap-2 rounded-xl border border-dashed border-gray-200 p-3">
                       <div className="flex h-7 w-7 items-center justify-center rounded-full bg-gradient-to-br from-brand-400 to-brand-600 text-[10px] font-bold text-white">
-                        {b.topCustomer.name.charAt(0)}
+                        {b.topMember.name.charAt(0)}
                       </div>
                       <div>
-                        <p className="text-[10px] text-gray-400">Top Customer</p>
-                        <p className="text-xs font-semibold text-gray-800">{b.topCustomer.name}</p>
+                        <p className="text-[10px] text-gray-400">Top Member</p>
+                        <p className="text-xs font-semibold text-gray-800">{b.topMember.name}</p>
                       </div>
-                      <span className="ml-auto text-xs font-bold text-brand-700">
-                        {thb(Number(b.topCustomer.total_spending))}
+                      <span className="ml-auto text-xs font-bold text-amber-700">
+                        {fmt(b.topMember.total_points)} pts
                       </span>
                     </div>
                   ) : (
                     <div className="mt-4 rounded-xl border border-dashed border-gray-100 p-3 text-center">
-                      <p className="text-[10px] text-gray-300">No customers yet</p>
+                      <p className="text-[10px] text-gray-300">No members yet</p>
                     </div>
                   )}
                 </div>
@@ -151,14 +141,14 @@ export default async function BranchesPage() {
             <div className="rounded-2xl border border-white/80 bg-white p-5 shadow-[0_1px_3px_rgba(0,0,0,0.05)]">
               <p className="mb-4 text-[13px] font-semibold text-gray-900">Branch Comparison</p>
               <div className="space-y-4">
-                {(['revenue', 'customers', 'ptsEarned'] as const).map(metric => {
+                {(['customers', 'ptsEarned', 'ptsRedeemed'] as const).map(metric => {
                   const getValue = (b: typeof branchData[0]) =>
-                    metric === 'customers' ? b.customers.length :
-                    metric === 'revenue'   ? b.revenue : b.ptsEarned
+                    metric === 'customers'   ? b.customers.length :
+                    metric === 'ptsRedeemed' ? b.ptsRedeemed : b.ptsEarned
 
                   const max = Math.max(...branchData.map(getValue), 1)
                   const labels: Record<typeof metric, string> = {
-                    revenue: 'Revenue', customers: 'Customers', ptsEarned: 'Points Earned',
+                    customers: 'Members', ptsEarned: 'Points Earned', ptsRedeemed: 'Points Redeemed',
                   }
 
                   return (
@@ -171,8 +161,7 @@ export default async function BranchesPage() {
                           const val  = getValue(b)
                           const pct  = (val / max) * 100
                           const display =
-                            metric === 'revenue'   ? thb(val) :
-                            metric === 'customers' ? `${val} customers` :
+                            metric === 'customers' ? `${val} members` :
                             `${fmt(val)} pts`
                           return (
                             <div key={b.id} className="flex items-center gap-3">

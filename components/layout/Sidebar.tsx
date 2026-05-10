@@ -3,8 +3,9 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
-  LayoutDashboard, Users, ShoppingBag, Star,
-  Store, Megaphone, Settings, LogOut, UserCog, CreditCard, X,
+  LayoutDashboard, Users, Star,
+  Store, Settings, LogOut, UserCog, CreditCard, X,
+  QrCode, Gift,
 } from 'lucide-react'
 import { logout } from '@/app/actions/auth'
 import { useSidebar } from './SidebarContext'
@@ -18,13 +19,13 @@ interface NavItem {
 }
 
 const NAV: NavItem[] = [
-  { href: '/dashboard',       label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/customers',       label: 'Customers',  icon: Users },
-  { href: '/purchases',       label: 'Purchases',  icon: ShoppingBag },
-  { href: '/points',          label: 'Points',     icon: Star },
-  { href: '/branches',        label: 'Branches',   icon: Store,     minRole: 'manager' },
-  { href: '/campaigns',       label: 'Campaigns',  icon: Megaphone, minRole: 'manager' },
-  { href: '/settings/staff',  label: 'Staff',      icon: UserCog,   minRole: 'admin'   },
+  { href: '/dashboard',          label: 'Dashboard', icon: LayoutDashboard },
+  { href: '/customers',          label: 'Members',   icon: Users },
+  { href: '/points',             label: 'Points',    icon: Star },
+  { href: '/points/qr/create',   label: 'QR Claim',  icon: QrCode },
+  { href: '/points/redeem/scan', label: 'Redeem',    icon: Gift },
+  { href: '/branches',           label: 'Branches',  icon: Store,   minRole: 'manager' },
+  { href: '/settings/staff',     label: 'Settings',  icon: UserCog, minRole: 'admin'   },
 ]
 
 const ROLE_RANK: Record<Role, number> = { staff: 0, manager: 1, admin: 2 }
@@ -71,11 +72,9 @@ export default function Sidebar({ user }: { user: SidebarUser }) {
       )}
 
       <aside className={[
-        // Mobile: fixed drawer, slide in/out
         'fixed inset-y-0 left-0 z-50 flex h-screen w-72 flex-col bg-white border-r border-gray-100',
         'transition-transform duration-200 ease-in-out',
         isOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full',
-        // Desktop: in-flow, always visible, narrower
         'lg:relative lg:w-60 lg:translate-x-0 lg:shadow-[1px_0_0_0_#f3f4f6]',
       ].join(' ')}>
 
@@ -87,7 +86,7 @@ export default function Sidebar({ user }: { user: SidebarUser }) {
             </svg>
           </div>
           <div className="min-w-0 flex-1">
-            <p className="text-[13px] font-bold text-gray-900 leading-none">Namwan CRM</p>
+            <p className="text-[13px] font-bold text-gray-900 leading-none">Namwan Loyalty</p>
             <p className="text-[10px] text-gray-400 mt-0.5">{ROLE_LABELS[user.role]} Portal</p>
           </div>
           {/* Close button — mobile only */}

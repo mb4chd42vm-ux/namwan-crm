@@ -282,8 +282,8 @@ export default async function CustomerDetailPage({
           </div>
         </div>
 
-        {/* ── Stats row ── */}
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        {/* ── Stats row (loyalty metrics only) ── */}
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
           {[
             {
               label: 'Points Balance',
@@ -294,17 +294,9 @@ export default async function CustomerDetailPage({
               border: 'border-amber-100',
             },
             {
-              label: 'Total Spending',
-              value: thb(displaySpending),
-              icon: ShoppingBag,
-              color: 'text-brand-600',
-              bg: 'bg-brand-50',
-              border: 'border-brand-100',
-            },
-            {
-              label: 'Avg per Visit',
-              value: avgSpend > 0 ? thb(avgSpend) : '—',
-              icon: TrendingUp,
+              label: 'Total Visits',
+              value: fmt(customer.visit_count ?? 0),
+              icon: Hash,
               color: 'text-blue-600',
               bg: 'bg-blue-50',
               border: 'border-blue-100',
@@ -374,85 +366,11 @@ export default async function CustomerDetailPage({
           </div>
         )}
 
-        {/* ── Two-column history ── */}
+        {/* ── Points history ── */}
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
 
-          {/* Purchase history */}
-          <div className="lg:col-span-2 rounded-2xl border border-white/80 bg-white p-5 shadow-[0_1px_3px_rgba(0,0,0,0.05)]">
-            <div className="mb-4 flex items-center justify-between">
-              <p className="text-[13px] font-semibold text-gray-900">Purchase History</p>
-              <span className="text-[10px] text-gray-400">{allPurchases.length} transaction{allPurchases.length !== 1 ? 's' : ''}</span>
-            </div>
-
-            {allPurchases.length === 0 ? (
-              <div className="flex flex-col items-center gap-2 py-10">
-                <ShoppingBag size={28} className="text-gray-200" />
-                <p className="text-xs text-gray-400">No purchases yet</p>
-              </div>
-            ) : (
-              <div className="space-y-2.5">
-                {allPurchases.map(p => {
-                  const branch = p.branches as unknown as { name: string; color_hex: string } | null
-                  const items  = p.purchase_items as unknown as { name: string; quantity: number; unit_price: number }[] | null ?? []
-                  const purchasedAt = new Date(p.purchased_at)
-                  return (
-                    <div
-                      key={p.id}
-                      className="rounded-xl border border-gray-100 p-3.5 hover:border-brand-100 hover:bg-brand-50/30 transition-colors"
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-1.5 flex-wrap">
-                            {branch && (
-                              <span
-                                className="rounded-md px-1.5 py-0.5 text-[9px] font-bold text-white flex-shrink-0"
-                                style={{ background: branch.color_hex }}
-                              >
-                                {branch.name}
-                              </span>
-                            )}
-                            <span className="text-[10px] text-gray-400">
-                              {purchasedAt.toLocaleDateString('en-GB', {
-                                day: '2-digit', month: 'short', year: 'numeric',
-                              })}
-                              {' '}·{' '}
-                              {purchasedAt.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}
-                            </span>
-                            {p.staff_note && (
-                              <span className="text-[10px] text-gray-400 italic truncate">
-                                · {p.staff_note}
-                              </span>
-                            )}
-                          </div>
-                          {items.length > 0 ? (
-                            <div className="flex flex-wrap gap-1">
-                              {items.map((item, idx) => (
-                                <span
-                                  key={idx}
-                                  className="rounded-md bg-gray-100 px-1.5 py-0.5 text-[10px] text-gray-600"
-                                >
-                                  {item.name} ×{item.quantity}
-                                </span>
-                              ))}
-                            </div>
-                          ) : (
-                            <p className="text-[10px] text-gray-400">No items recorded</p>
-                          )}
-                        </div>
-                        <div className="text-right flex-shrink-0">
-                          <p className="text-sm font-bold text-gray-900">{thb(Number(p.total_amount))}</p>
-                          <p className="text-[10px] text-emerald-600 font-medium">+{p.points_earned ?? 0} pts</p>
-                        </div>
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            )}
-          </div>
-
-          {/* Points log */}
-          <div className="rounded-2xl border border-white/80 bg-white p-5 shadow-[0_1px_3px_rgba(0,0,0,0.05)] flex flex-col">
+          {/* Points log — full width */}
+          <div className="lg:col-span-3 rounded-2xl border border-white/80 bg-white p-5 shadow-[0_1px_3px_rgba(0,0,0,0.05)] flex flex-col">
             <div className="mb-4 flex items-center justify-between">
               <p className="text-[13px] font-semibold text-gray-900">Points Log</p>
               <span className="text-[10px] text-gray-400">{allTxs.length} event{allTxs.length !== 1 ? 's' : ''}</span>

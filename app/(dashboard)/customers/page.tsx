@@ -110,7 +110,7 @@ export default async function CustomersPage({
   return (
     <div className="flex flex-1 flex-col overflow-hidden">
       <Topbar
-        title="Customers"
+        title="Members"
         subtitle={`${fmt(allCounts.length)} members · shared loyalty across all branches`}
         branches={branches ?? []}
         activeBranch={branchFilter}
@@ -199,11 +199,10 @@ export default async function CustomersPage({
               <table className="w-full text-xs">
                 <thead>
                   <tr className="border-b border-gray-100 bg-gray-50/60">
-                    <th className="px-4 py-3 text-left text-[10px] font-semibold uppercase tracking-wider text-gray-400">Customer</th>
+                    <th className="px-4 py-3 text-left text-[10px] font-semibold uppercase tracking-wider text-gray-400">Member</th>
                     <th className="px-4 py-3 text-left text-[10px] font-semibold uppercase tracking-wider text-gray-400">Segment</th>
                     <th className="px-4 py-3 text-left text-[10px] font-semibold uppercase tracking-wider text-gray-400 hidden sm:table-cell">Branch</th>
                     <th className="px-4 py-3 text-left text-[10px] font-semibold uppercase tracking-wider text-gray-400">Points</th>
-                    <th className="px-4 py-3 text-left text-[10px] font-semibold uppercase tracking-wider text-gray-400 hidden md:table-cell">Total Spent</th>
                     <th className="px-4 py-3 text-left text-[10px] font-semibold uppercase tracking-wider text-gray-400 hidden lg:table-cell">Visits</th>
                     <th className="px-4 py-3 text-left text-[10px] font-semibold uppercase tracking-wider text-gray-400 hidden lg:table-cell">Last Visit</th>
                     <th className="w-8" />
@@ -265,14 +264,13 @@ export default async function CustomersPage({
           </div>
         )}
 
-        {/* ── Summary stats ── */}
+        {/* ── Summary stats (loyalty metrics only) ── */}
         {filtered.length > 0 && (
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
             {[
-              { label: 'Total Spending', value: thb(totalSpending) },
-              { label: 'Total Points',   value: pts(totalPoints) },
-              { label: 'Avg. Spending',  value: thb(avgSpending) },
-              { label: 'Avg. Visits',    value: avgVisits },
+              { label: 'Total Members', value: fmt(filtered.length) },
+              { label: 'Total Points',  value: pts(totalPoints) },
+              { label: 'Avg. Visits',   value: avgVisits },
             ].map(s => (
               <div key={s.label} className="rounded-xl bg-white border border-gray-100 px-4 py-3 text-center shadow-sm">
                 <p className="text-[10px] text-gray-400">{s.label}</p>
