@@ -30,6 +30,9 @@ export default async function CustomerDetailPage({
 
   const supabase = await createClient()
 
+  // customers → branches has TWO FKs (home_branch_id + favorite_branch_id), which
+  // causes PGRST201 "ambiguous relationship" when embedding branches(...) directly.
+  // Fix: select customer without branch embed, then fetch the home branch separately.
   const [
     { data: customer, error: customerErr },
     { data: purchases },
@@ -38,8 +41,8 @@ export default async function CustomerDetailPage({
   ] = await Promise.all([
     supabase
       .from('customers')
-      .select('*, branches(name, color_hex)')
-      .eq('id', id)   // exact match, no regex validation
+      .select('*')              // no branches embed — avoids PGRST201
+      .eq('id', id)            // exact match, no regex validation
       .single(),
 
     supabase
@@ -106,7 +109,8 @@ export default async function CustomerDetailPage({
     )
   }
 
-  const homeBranch  = customer.branches as unknown as { name: string; color_hex: string } | null
+  // Resolve home branch from the branches list (no embed needed)
+  const homeBranch = (branches ?? []).find(b => b.id === customer.home_branch_id) ?? null
   const segment     = customer.segment as Segment
   const m           = SEGMENT_META[segment]
   const allPurchases = purchases ?? []
