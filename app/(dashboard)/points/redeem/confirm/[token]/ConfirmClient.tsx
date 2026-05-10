@@ -2,21 +2,29 @@
 
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { CheckCircle, AlertTriangle, Star, User, Loader2 } from 'lucide-react'
+import { CheckCircle, AlertTriangle, Star, Loader2 } from 'lucide-react'
 
-interface Branch   { id: string; name: string; color_hex: string }
+interface Branch { id: string; name: string; color_hex: string }
+
 interface TokenData {
-  valid:           boolean
-  reason?:         string
-  request_id?:     string
-  reward_name?:    string
+  valid:            boolean
+  reason?:          string
+  request_id?:      string
+  reward_name?:     string
   points_required?: number
-  expires_at?:     string
+  expires_at?:      string
   customer?: {
     id:           string
     name:         string
     phone:        string
     total_points: number
+  }
+  // debug fields passed through from server
+  _debug?: {
+    token:     string
+    status?:   string
+    found:     boolean
+    expires_at?: string
   }
 }
 
@@ -32,31 +40,15 @@ export default function ConfirmClient({
   branches:  Branch[]
 }) {
   const router = useRouter()
-  const [branchId,  setBranchId]  = useState(branches[0]?.id ?? '')
-  const [isPending, start]        = useTransition()
-  const [confirmed, setConfirmed] = useState(false)
+  const [branchId,   setBranchId]   = useState(branches[0]?.id ?? '')
+  const [isPending,  start]         = useTransition()
+  const [confirmed,  setConfirmed]  = useState(false)
   const [newBalance, setNewBalance] = useState<number | null>(null)
-  const [error,     setError]     = useState<string | null>(null)
+  const [error,      setError]      = useState<string | null>(null)
 
-  if (!tokenData.valid) {
-    return (
-      <div className="rounded-2xl border border-red-100 bg-red-50 px-6 py-8 text-center space-y-3">
-        <AlertTriangle size={32} className="text-red-400 mx-auto" />
-        <p className="text-base font-bold text-red-700">Invalid QR Code</p>
-        <p className="text-sm text-red-500">{tokenData.reason ?? 'This redemption request is not valid.'}</p>
-        <button
-          onClick={() => router.push('/points/redeem/scan')}
-          className="mt-2 rounded-xl bg-red-500 px-5 py-2.5 text-sm font-semibold text-white hover:bg-red-600 transition-colors"
-        >
-          Scan another QR
-        </button>
-      </div>
-    )
-  }
-
-  const customer = tokenData.customer!
-
+  // ── Success state ──────────────────────────────────────────────────────────
   if (confirmed && newBalance !== null) {
+    const customer = tokenData.customer
     return (
       <div className="rounded-2xl border border-emerald-100 bg-emerald-50 px-6 py-8 text-center space-y-4">
         <div className="flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100 mx-auto">
@@ -64,9 +56,11 @@ export default function ConfirmClient({
         </div>
         <div className="space-y-1">
           <p className="text-lg font-bold text-emerald-800">Redemption Confirmed!</p>
-          <p className="text-sm text-emerald-700">
-            1 free drink has been awarded to <span className="font-semibold">{customer.name}</span>
-          </p>
+          {customer && (
+            <p className="text-sm text-emerald-700">
+              1 free drink awarded to <span className="font-semibold">{customer.name}</span>
+            </p>
+          )}
         </div>
         <div className="rounded-xl bg-white border border-emerald-100 px-5 py-4 text-left space-y-2">
           <div className="flex justify-between text-sm">
@@ -80,12 +74,14 @@ export default function ConfirmClient({
         </div>
         <div className="flex gap-3">
           <button
+            type="button"
             onClick={() => router.push('/points/redeem/scan')}
             className="flex-1 rounded-xl border border-gray-200 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors"
           >
             Scan another
           </button>
           <button
+            type="button"
             onClick={() => router.push('/points')}
             className="flex-1 rounded-xl bg-amber-500 py-2.5 text-sm font-semibold text-white hover:bg-amber-600 transition-colors"
           >
@@ -96,48 +92,77 @@ export default function ConfirmClient({
     )
   }
 
+  // ── Invalid / not found ────────────────────────────────────────────────────
+  if (!tokenData.valid) {
+    return (
+      <div className="space-y-4">
+        <div className="rounded-2xl border border-red-100 bg-red-50 px-6 py-8 text-center space-y-3">
+          <AlertTriangle size={32} className="text-red-400 mx-auto" />
+          <p className="text-base font-bold text-red-700">
+            {tokenData.reason ?? 'Redeem QR not found or expired'}
+          </p>
+          <button
+            type="button"
+            onClick={() => router.push('/points/redeem/scan')}
+            className="mt-2 rounded-xl bg-red-500 px-5 py-2.5 text-sm font-semibold text-white hover:bg-red-600 transition-colors"
+          >
+            Scan another QR
+          </button>
+        </div>
+
+        {/* Debug panel */}
+        <DebugPanel token={token} debug={tokenData._debug} />
+      </div>
+    )
+  }
+
+  const customer     = tokenData.customer!
+  const balanceAfter = customer.total_points - POINTS_PER_DRINK
+  const expiresStr   = tokenData.expires_at
+    ? new Date(tokenData.expires_at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
+    : null
+
   function confirm() {
     if (!branchId) { setError('Please select a branch'); return }
     setError(null)
     start(async () => {
       try {
-        const res  = await fetch(`/api/redeem/${token}/confirm`, {
+        // POST /api/redeem/[token]  — confirm endpoint lives here, NOT /confirm sub-path
+        const res  = await fetch(`/api/redeem/${token}`, {
           method:  'POST',
           headers: { 'Content-Type': 'application/json' },
           body:    JSON.stringify({ branch_id: branchId }),
         })
-        const data = await res.json()
-        if (!res.ok) {
-          setError(data.error ?? 'Confirmation failed')
+        let data: Record<string, unknown> = {}
+        try {
+          data = await res.json()
+        } catch {
+          setError(`Server error (HTTP ${res.status}) — check Vercel logs`)
           return
         }
-        setNewBalance(data.new_balance)
+        if (!res.ok) {
+          setError((data.error as string) ?? `Confirmation failed (HTTP ${res.status})`)
+          return
+        }
+        setNewBalance(data.new_balance as number)
         setConfirmed(true)
-      } catch {
-        setError('Connection error. Please try again.')
+      } catch (e) {
+        setError(e instanceof Error ? e.message : 'Connection error — please try again')
       }
     })
   }
 
-  const expiresAt   = tokenData.expires_at ? new Date(tokenData.expires_at) : null
-  const expiresStr  = expiresAt
-    ? expiresAt.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
-    : null
-  const balanceAfter = customer.total_points - POINTS_PER_DRINK
-
   return (
     <div className="space-y-5">
 
-      {/* Customer card */}
+      {/* Customer / reward card */}
       <div className="rounded-2xl border border-gray-100 bg-white shadow-sm overflow-hidden">
         <div className="bg-amber-50 border-b border-amber-100 px-5 py-3 flex items-center justify-between">
           <p className="text-xs font-semibold text-amber-700 uppercase tracking-wide">Redemption Request</p>
-          {expiresStr && (
-            <p className="text-[11px] text-amber-600">Expires {expiresStr}</p>
-          )}
+          {expiresStr && <p className="text-[11px] text-amber-600">Expires {expiresStr}</p>}
         </div>
         <div className="px-5 py-5 space-y-4">
-          {/* Customer info */}
+          {/* Customer */}
           <div className="flex items-center gap-3">
             <div className="flex h-11 w-11 items-center justify-center rounded-full bg-brand-100 text-lg font-bold text-brand-700">
               {customer.name.charAt(0)}
@@ -215,6 +240,7 @@ export default function ConfirmClient({
       {/* Actions */}
       <div className="flex gap-3">
         <button
+          type="button"
           onClick={() => router.push('/points/redeem/scan')}
           disabled={isPending}
           className="flex-1 rounded-xl border border-gray-200 py-3 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50"
@@ -222,6 +248,7 @@ export default function ConfirmClient({
           Cancel
         </button>
         <button
+          type="button"
           onClick={confirm}
           disabled={isPending || !branchId || customer.total_points < POINTS_PER_DRINK}
           className="flex-1 rounded-xl bg-amber-500 py-3 text-sm font-semibold text-white hover:bg-amber-600 transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
@@ -232,6 +259,27 @@ export default function ConfirmClient({
           }
         </button>
       </div>
+
+      {/* Debug panel — always visible so staff can diagnose issues */}
+      <DebugPanel token={token} debug={tokenData._debug} />
     </div>
+  )
+}
+
+// ── Debug panel ──────────────────────────────────────────────────────────────
+
+function DebugPanel({ token, debug }: { token: string; debug?: TokenData['_debug'] }) {
+  return (
+    <details className="rounded-xl border border-gray-200 bg-gray-50 text-xs">
+      <summary className="cursor-pointer px-4 py-2.5 font-semibold text-gray-400 select-none">
+        Debug info
+      </summary>
+      <div className="px-4 pb-3 space-y-1 text-gray-500 font-mono break-all">
+        <div><span className="text-gray-400">token:</span> {token}</div>
+        <div><span className="text-gray-400">found:</span> {debug?.found ? 'yes' : 'no'}</div>
+        <div><span className="text-gray-400">status:</span> {debug?.status ?? '—'}</div>
+        <div><span className="text-gray-400">expires_at:</span> {debug?.expires_at ?? '—'}</div>
+      </div>
+    </details>
   )
 }

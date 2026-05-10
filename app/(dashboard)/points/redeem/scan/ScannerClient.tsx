@@ -20,61 +20,6 @@ const ELEMENT_ID = 'qr-scanner-region'
 // A valid redeem token is a 48-char hex string (randomBytes(24).toString('hex'))
 const TOKEN_RE = /^[0-9a-f]{48}$/i
 
-/**
- * Extract a redeem token from raw QR content.
- *
- * Handles all formats:
- *   https://namwan-crm.vercel.app/points/redeem/confirm/<token>
- *   https://example.com/redeem/<token>
- *   /points/redeem/confirm/<token>
- *   /redeem/<token>
- *   ?token=<token>
- *   <token>   (raw 48-char hex)
- */
-function extractToken(raw: string): { token: string | null; debug: string } {
-  const trimmed = raw.trim()
-
-  // 1. Try URL parse
-  try {
-    const url = new URL(trimmed)
-
-    // Query param ?token=xxx
-    const qp = url.searchParams.get('token')
-    if (qp && TOKEN_RE.test(qp)) {
-      return { token: qp, debug: `URL query param: ${qp.slice(0, 8)}…` }
-    }
-
-    // Path segments — last 48-char hex segment wins
-    const segments = url.pathname.split('/').filter(Boolean)
-    for (let i = segments.length - 1; i >= 0; i--) {
-      if (TOKEN_RE.test(segments[i])) {
-        return { token: segments[i], debug: `URL path segment [${i}]: ${segments[i].slice(0, 8)}…` }
-      }
-    }
-    return { token: null, debug: `URL parsed but no token found in path: ${url.pathname}` }
-  } catch {
-    // Not a full URL — try as relative path or raw token
-  }
-
-  // 2. Relative path: /redeem/xxx or /points/redeem/confirm/xxx
-  if (trimmed.startsWith('/')) {
-    const segments = trimmed.split('/').filter(Boolean)
-    for (let i = segments.length - 1; i >= 0; i--) {
-      if (TOKEN_RE.test(segments[i])) {
-        return { token: segments[i], debug: `Relative path segment: ${segments[i].slice(0, 8)}…` }
-      }
-    }
-    return { token: null, debug: `Path but no valid token: ${trimmed}` }
-  }
-
-  // 3. Raw token
-  if (TOKEN_RE.test(trimmed)) {
-    return { token: trimmed, debug: `Raw token: ${trimmed.slice(0, 8)}…` }
-  }
-
-  return { token: null, debug: `No token found in: ${trimmed.slice(0, 60)}` }
-}
-
 type CameraState = 'init' | 'requesting' | 'scanning' | 'error' | 'denied'
 
 export default function ScannerClient() {
@@ -100,18 +45,32 @@ export default function ScannerClient() {
     if (stoppedRef.current) return
     stoppedRef.current = true
 
-    const { token, debug } = extractToken(raw)
-    setDebugRaw(raw)
-    setDebugToken(token)
-    setDebugDetail(debug)
+    const trimmed = raw.trim()
+    setDebugRaw(trimmed)
 
     stopScanner()
 
-    if (token) {
-      router.push(`/points/redeem/confirm/${token}`)
+    // If it's a full URL, navigate to its pathname directly
+    try {
+      const url = new URL(trimmed)
+      setDebugDetail(`URL pathname: ${url.pathname}`)
+      setDebugToken(null)
+      router.push(url.pathname)
+      return
+    } catch {
+      // Not a URL — fall through
+    }
+
+    // Otherwise expect a raw 48-char hex token
+    if (TOKEN_RE.test(trimmed)) {
+      setDebugDetail(`Raw token`)
+      setDebugToken(trimmed)
+      router.push(`/points/redeem/confirm/${trimmed}`)
     } else {
+      setDebugDetail(`Not a valid URL or token`)
+      setDebugToken(null)
       setCameraState('error')
-      setErrorMsg(`Could not extract token.\n${debug}`)
+      setErrorMsg(`Could not read QR code.\nGot: ${trimmed.slice(0, 60)}`)
       stoppedRef.current = false // allow retry
     }
   }
@@ -170,14 +129,25 @@ export default function ScannerClient() {
   // ── Manual entry ─────────────────────────────────────────────────────────────
 
   function submitManual() {
-    const raw = manualToken.trim()
-    const { token, debug } = extractToken(raw)
-    if (!token) {
-      setManualErr(`Invalid token format. ${debug}`)
+    const trimmed = manualToken.trim()
+
+    // Full URL → navigate to pathname
+    try {
+      const url = new URL(trimmed)
+      setManualErr(null)
+      router.push(url.pathname)
       return
+    } catch {
+      // Not a URL
     }
-    setManualErr(null)
-    router.push(`/points/redeem/confirm/${token}`)
+
+    // Raw token
+    if (TOKEN_RE.test(trimmed)) {
+      setManualErr(null)
+      router.push(`/points/redeem/confirm/${trimmed}`)
+    } else {
+      setManualErr(`Invalid format. Paste the full redeem URL or the 48-character token.`)
+    }
   }
 
   // ── Render ───────────────────────────────────────────────────────────────────
