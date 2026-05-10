@@ -48,7 +48,7 @@ export default function CustomerRow({
 
   return (
     <tr
-      onClick={() => router.push(`/customers/${id}`)}
+      onClick={() => router.push(`/customers/${encodeURIComponent(id)}`)}
       className="hover:bg-brand-50/60 transition-colors cursor-pointer group"
     >
       {/* Customer */}

@@ -392,7 +392,7 @@ export default async function DashboardPage({
                   return (
                     <Link
                       key={c.id}
-                      href={`/customers/${c.id}`}
+                      href={`/customers/${encodeURIComponent(c.id)}`}
                       className="flex items-center gap-3 py-2.5 hover:bg-gray-50 rounded-lg px-2 -mx-2 transition-colors"
                     >
                       <span className="text-xs font-bold text-gray-300 w-4">{i + 1}</span>

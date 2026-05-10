@@ -50,7 +50,7 @@ export default function CustomerTableBody({
         return (
           <tr
             key={c.id}
-            onClick={() => router.push(`/customers/${c.id}`)}
+            onClick={() => router.push(`/customers/${encodeURIComponent(c.id)}`)}
             className="hover:bg-brand-50/60 transition-colors cursor-pointer group"
           >
             {/* Customer */}

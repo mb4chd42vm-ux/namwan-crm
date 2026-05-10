@@ -19,11 +19,14 @@ export default async function CustomerDetailPage({
   params:       Promise<{ id: string }>
   searchParams: Promise<Record<string, string>>
 }) {
-  const { id }    = await params
+  const rawId     = (await params).id
+  const id        = rawId.trim()          // trim any accidental whitespace
   const sp        = await searchParams
   const debugMode = sp.debug === '1'
 
-  console.log('[customer-detail] params.id:', id)
+  // Log both raw and trimmed so we can spot encoding/whitespace issues
+  console.log('[customer-detail] raw params.id :', JSON.stringify(rawId))
+  console.log('[customer-detail] trimmed id     :', JSON.stringify(id))
 
   const supabase = await createClient()
 
@@ -36,7 +39,7 @@ export default async function CustomerDetailPage({
     supabase
       .from('customers')
       .select('*, branches(name, color_hex)')
-      .eq('id', id)
+      .eq('id', id)   // exact match, no regex validation
       .single(),
 
     supabase
@@ -58,33 +61,46 @@ export default async function CustomerDetailPage({
       .order('sort_order'),
   ])
 
+  console.log('[customer-detail] query result  :', customer ? `found (${customer.name})` : 'null')
   if (customerErr) {
-    console.error('[customer-detail] query error for id', id, customerErr)
+    console.error('[customer-detail] query error  :', customerErr)
   }
 
   if (!customer) {
+    // Always show debug panel when customer is null — never hide the error
     return (
       <div className="flex flex-1 flex-col overflow-hidden">
         <Topbar title="Customer not found" subtitle="" branches={branches ?? []} />
-        <main className="flex-1 flex flex-col items-center justify-center gap-5 px-6 py-16 text-center">
-          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-red-50 border border-red-100">
-            <AlertTriangle size={28} className="text-red-400" />
+        <main className="flex-1 overflow-y-auto px-6 py-8 space-y-5 max-w-lg mx-auto w-full">
+          {/* Debug panel — always visible when customer is null */}
+          <div className="rounded-xl border border-yellow-200 bg-yellow-50 p-4 text-xs font-mono space-y-1.5">
+            <p className="font-bold text-yellow-800 text-[11px] uppercase tracking-wide mb-2">Debug info</p>
+            <div><span className="text-yellow-600">raw params.id: </span><span className="text-yellow-900 break-all">{JSON.stringify(rawId)}</span></div>
+            <div><span className="text-yellow-600">trimmed id:    </span><span className="text-yellow-900 break-all">{JSON.stringify(id)}</span></div>
+            <div><span className="text-yellow-600">customer found: </span><span className="text-red-700 font-semibold">no</span></div>
+            {customerErr
+              ? <div><span className="text-yellow-600">Supabase error: </span><span className="text-red-700">{customerErr.message} (code: {customerErr.code})</span></div>
+              : <div className="text-yellow-700">No Supabase error — row genuinely not in DB with this id</div>
+            }
           </div>
-          <div className="space-y-1.5">
-            <p className="text-base font-bold text-gray-900">Customer not found</p>
-            <p className="text-sm text-gray-400">
-              This customer may have been deleted or the link is invalid.
-            </p>
-            {process.env.NODE_ENV !== 'production' && (
-              <p className="text-[11px] font-mono text-gray-300 mt-2">id: {id}</p>
-            )}
+
+          <div className="flex flex-col items-center gap-5 text-center">
+            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-red-50 border border-red-100">
+              <AlertTriangle size={28} className="text-red-400" />
+            </div>
+            <div className="space-y-1.5">
+              <p className="text-base font-bold text-gray-900">Customer not found</p>
+              <p className="text-sm text-gray-400">
+                This customer may have been deleted, or the ID in the URL does not match any record.
+              </p>
+            </div>
+            <Link
+              href="/customers?debug=1"
+              className="inline-flex items-center gap-2 rounded-xl bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-700 transition-colors"
+            >
+              <ArrowLeft size={14} /> Back to Customers (debug on)
+            </Link>
           </div>
-          <Link
-            href="/customers"
-            className="inline-flex items-center gap-2 rounded-xl bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-700 transition-colors"
-          >
-            <ArrowLeft size={14} /> Back to Customers
-          </Link>
         </main>
       </div>
     )
