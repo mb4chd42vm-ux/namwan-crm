@@ -25,7 +25,7 @@ const NAV: NavItem[] = [
   { href: '/points/qr/create',   label: 'QR Claim',  icon: QrCode },
   { href: '/points/redeem/scan', label: 'Redeem',    icon: Gift },
   { href: '/branches',           label: 'Branches',  icon: Store,   minRole: 'manager' },
-  { href: '/settings/staff',     label: 'Settings',  icon: UserCog, minRole: 'admin'   },
+  { href: '/settings',           label: 'Settings',  icon: UserCog, minRole: 'admin'   },
 ]
 
 const ROLE_RANK: Record<Role, number> = { staff: 0, manager: 1, admin: 2 }
