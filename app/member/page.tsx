@@ -7,6 +7,7 @@ import {
   User, MapPin, Heart, Megaphone,
 } from 'lucide-react'
 import { useLiff, type LiffProfile } from '@/hooks/useLiff'
+import ProvinceSelector, { type LocationValue } from '@/components/location/ProvinceSelector'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -227,7 +228,7 @@ function RegisterView({
   // Step 2 fields
   const [birthday,          setBirthday]          = useState('')
   const [gender,            setGender]            = useState('')
-  const [areaOrProvince,    setAreaOrProvince]     = useState('')
+  const [location,          setLocation]          = useState<LocationValue | null>(null)
   const [favoriteBranchId,  setFavoriteBranchId]  = useState('')
   const [discoveredFrom,    setDiscoveredFrom]     = useState('')
   const [marketingConsent,  setMarketingConsent]   = useState(false)
@@ -260,10 +261,11 @@ function RegisterView({
             display_name:       profile.displayName,
             picture_url:        profile.pictureUrl,
             phone:              phone.trim(),
-            birthday:           birthday   || undefined,
-            gender:             gender     || undefined,
-            area_or_province:   areaOrProvince || undefined,
-            favorite_branch_id: favoriteBranchId || undefined,
+            birthday:           birthday              || undefined,
+            gender:             gender                || undefined,
+            area_or_province:   location?.province    || undefined,
+            region:             location?.regionId    || undefined,
+            favorite_branch_id: favoriteBranchId      || undefined,
             discovered_from:    discoveredFrom || undefined,
             marketing_consent:  marketingConsent,
           }),
@@ -403,18 +405,12 @@ function RegisterView({
               </div>
             </div>
 
-            {/* Area / Province */}
+            {/* Province / Region */}
             <div>
-              <label className="flex items-center gap-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
-                <MapPin size={11} /> Area / Province
+              <label className="flex items-center gap-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
+                <MapPin size={11} /> Province
               </label>
-              <input
-                type="text"
-                value={areaOrProvince}
-                onChange={e => setAreaOrProvince(e.target.value)}
-                placeholder="e.g. Bangkok, Chiang Mai…"
-                className="w-full h-11 rounded-xl border border-gray-200 px-4 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-400/20 transition-colors"
-              />
+              <ProvinceSelector value={location} onChange={setLocation} />
             </div>
 
             {/* Favourite branch */}

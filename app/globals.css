@@ -26,3 +26,17 @@ body { background: #f8f7f5; color: #111827; font-family: var(--font-sans); }
 ::-webkit-scrollbar-thumb { border-radius: 9999px; background: #d1d5db; }
 
 .glass { background: rgba(255,255,255,0.7); backdrop-filter: blur(12px); }
+
+/* QR scanner scan-line animation */
+@keyframes scanline {
+  0%   { top: 8px;   opacity: 1; }
+  50%  { top: calc(100% - 8px); opacity: 1; }
+  100% { top: 8px;   opacity: 1; }
+}
+
+/* Suppress html5-qrcode internal chrome (status text, file button) */
+#qr-scanner-region > div:not([id]) { display: none !important; }
+#qr-scanner-region img,
+#qr-scanner-region select,
+#qr-scanner-region button { display: none !important; }
+#qr-scanner-region video  { width: 100% !important; height: 100% !important; object-fit: cover !important; }

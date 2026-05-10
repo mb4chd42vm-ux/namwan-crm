@@ -33,9 +33,9 @@ export interface MonthlyStat { month: string; bakery: number; brunch: number; ca
 // ─── Branches ─────────────────────────────────────────────────────────────────
 
 export const BRANCHES: Branch[] = [
-  { id: 'b1', name: 'The Bakery',  location: 'Sukhumvit Soi 11, Bangkok',   color: '#c45f12', accent: '#fdf6ee' },
-  { id: 'b2', name: 'Brunch Club', location: 'Silom Road, Bangkok',          color: '#0f766e', accent: '#f0fdfa' },
-  { id: 'b3', name: 'Café Corner', location: 'Nimman Road, Chiang Mai',       color: '#7c3aed', accent: '#f5f3ff' },
+  { id: 'b1', name: 'Namwan Muengthongthani',             location: 'Muengthongthani, Nonthaburi', color: '#c45f12', accent: '#fdf6ee' },
+  { id: 'b2', name: 'Namwan Petchkasem',                  location: 'Petchkasem Road, Bangkok',    color: '#0f766e', accent: '#f0fdfa' },
+  { id: 'b3', name: 'Namwan Bake Beforebrunch (Suan Phak)', location: 'Suan Phak, Bangkok',        color: '#7c3aed', accent: '#f5f3ff' },
 ]
 
 // ─── Customers ────────────────────────────────────────────────────────────────

@@ -16,7 +16,7 @@ function adminClient() {
  *
  * Body:
  *   { line_id, display_name, picture_url?, phone,
- *     birthday?, gender?, area_or_province?, favorite_branch_id?,
+ *     birthday?, gender?, area_or_province?, region?, favorite_branch_id?,
  *     discovered_from?, marketing_consent? }
  *
  * Response:
@@ -33,6 +33,7 @@ export async function POST(req: NextRequest) {
     birthday?:           string
     gender?:             string
     area_or_province?:   string
+    region?:             string
     favorite_branch_id?: string
     discovered_from?:    string
     marketing_consent?:  boolean
@@ -52,6 +53,7 @@ export async function POST(req: NextRequest) {
     birthday,
     gender,
     area_or_province,
+    region,
     favorite_branch_id,
     discovered_from,
     marketing_consent,
@@ -66,9 +68,10 @@ export async function POST(req: NextRequest) {
 
   const profileFields = {
     picture_url:         picture_url       ?? null,
-    birthday:            birthday          ?? null,
-    gender:              gender            ?? null,
-    area_or_province:    area_or_province  ?? null,
+    birthday:            birthday           ?? null,
+    gender:              gender             ?? null,
+    area_or_province:    area_or_province   ?? null,
+    region:              region             ?? null,
     favorite_branch_id:  favorite_branch_id ?? null,
     discovered_from:     discovered_from   ?? null,
     marketing_consent:   marketing_consent ?? false,

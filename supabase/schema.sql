@@ -1,5 +1,5 @@
 -- ============================================================
--- Brew & Co — Multi-Branch Bakery CRM
+-- Namwan — Multi-Branch Bakery CRM
 -- Supabase / PostgreSQL Schema
 -- ============================================================
 -- Run order:
@@ -592,9 +592,9 @@ create policy "staff_write_campaigns"  on campaigns for all   using (is_authenti
 
 -- ── branches ─────────────────────────────────────────────────
 insert into branches (id, name, location, phone, color_hex, sort_order) values
-  ('b1000000-0000-0000-0000-000000000001', 'The Bakery',   'Sukhumvit Soi 11, Bangkok',   '02-111-1111', '#c45f12', 1),
-  ('b1000000-0000-0000-0000-000000000002', 'Brunch Club',  'Silom Road, Bangkok',          '02-222-2222', '#0f766e', 2),
-  ('b1000000-0000-0000-0000-000000000003', 'Café Corner',  'Nimman Road, Chiang Mai',      '053-333-333', '#7c3aed', 3)
+  ('b1000000-0000-0000-0000-000000000001', 'Namwan Muengthongthani',             'Muengthongthani, Nonthaburi', '02-111-1111', '#c45f12', 1),
+  ('b1000000-0000-0000-0000-000000000002', 'Namwan Petchkasem',                  'Petchkasem Road, Bangkok',    '02-222-2222', '#0f766e', 2),
+  ('b1000000-0000-0000-0000-000000000003', 'Namwan Bake Beforebrunch (Suan Phak)', 'Suan Phak, Bangkok',        '02-333-3333', '#7c3aed', 3)
 on conflict (id) do nothing;
 
 
