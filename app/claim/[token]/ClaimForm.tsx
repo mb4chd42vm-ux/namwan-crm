@@ -6,8 +6,6 @@ import { claimQRToken } from '@/app/actions/qrClaims'
 import { useLiff } from '@/hooks/useLiff'
 
 interface Customer { id: string; name: string; phone: string }
-
-// Resolved customer for claiming (either from LINE or phone lookup)
 interface ResolvedCustomer { id: string; name: string; via: 'line' | 'phone' }
 
 export default function ClaimForm({
@@ -18,34 +16,30 @@ export default function ClaimForm({
   branchColor,
   customers,
 }: {
-  token:          string
-  drinkQuantity:  number
-  points:         number
-  branchName:     string
-  branchColor:    string
-  customers:      Customer[]
+  token:         string
+  drinkQuantity: number
+  points:        number
+  branchName:    string
+  branchColor:   string
+  customers:     Customer[]
 }) {
   const [isPending, startTransition] = useTransition()
-  const [phone,   setPhone]          = useState('')
-  const [error,   setError]          = useState<string | null>(null)
-  const [claimed, setClaimed]        = useState<{ points: number; drinkQuantity: number } | null>(null)
+  const [phone,     setPhone]        = useState('')
+  const [error,     setError]        = useState<string | null>(null)
+  const [claimed,   setClaimed]      = useState<{ points: number; drinkQuantity: number; newBalance: number | null } | null>(null)
 
-  // LINE identification (optional — hook never auto-redirects on claim page)
   const liff = useLiff()
   const [lineCustomer,  setLineCustomer]  = useState<ResolvedCustomer | null>(null)
   const [lineCheckDone, setLineCheckDone] = useState(false)
   const [lineNotFound,  setLineNotFound]  = useState(false)
 
-  // When LIFF is ready, look up the customer by line_id server-side
   useEffect(() => {
-    // Any non-ready terminal state → skip LIFF, fall back to phone
     if (liff.status === 'unavailable' || liff.status === 'not_logged_in' || liff.status === 'error') {
       setLineCheckDone(true)
       return
     }
     if (liff.status !== 'ready' || !liff.profile) return
 
-    // LIFF ready → resolve customer by line_id
     ;(async () => {
       try {
         const res  = await fetch('/api/liff/me', {
@@ -54,21 +48,19 @@ export default function ClaimForm({
           body:    JSON.stringify({ line_id: liff.profile!.userId }),
         })
         const data = await res.json()
-
         if (data.found && data.customer) {
           setLineCustomer({ id: data.customer.id, name: data.customer.name, via: 'line' })
         } else {
           setLineNotFound(true)
         }
       } catch {
-        // Ignore — fall back to phone form silently
+        // silent — fall back to phone
       } finally {
         setLineCheckDone(true)
       }
     })()
   }, [liff.status, liff.profile])
 
-  // Phone-based match (shown when LINE not available or customer not found)
   const phoneMatched: ResolvedCustomer | null =
     phone.trim().length >= 3
       ? (() => {
@@ -77,19 +69,14 @@ export default function ClaimForm({
         })()
       : null
 
-  // Which customer will receive the points
   const resolved: ResolvedCustomer | null = lineCustomer ?? phoneMatched
-
-  // Are we still waiting for the LIFF check?
   const liffPending = !lineCheckDone && liff.status === 'loading'
 
   function submit() {
-    if (!resolved) { setError('Please enter your phone number and try again.'); return }
-
+    if (!resolved) { setError('Please enter your phone number.'); return }
     const fd = new FormData()
     fd.append('token',       token)
     fd.append('customer_id', resolved.id)
-
     setError(null)
     startTransition(async () => {
       try {
@@ -101,40 +88,72 @@ export default function ClaimForm({
     })
   }
 
-  // ── Success state ─────────────────────────────────────────────────────────
+  // ── Success ───────────────────────────────────────────────────────────────────
   if (claimed) {
     return (
-      <div className="flex flex-col items-center gap-6 py-8 text-center">
-        <div className="flex h-24 w-24 items-center justify-center rounded-full bg-emerald-100">
-          <CheckCircle size={48} className="text-emerald-500" />
+      <div className="flex flex-col items-center gap-7 py-6 text-center">
+        {/* Icon */}
+        <div
+          className="flex h-24 w-24 items-center justify-center rounded-full"
+          style={{ background: `${branchColor}22` }}
+        >
+          <CheckCircle size={52} style={{ color: branchColor }} />
         </div>
-        <div className="space-y-2">
-          <p className="text-2xl font-bold text-gray-900">Points Claimed!</p>
-          <p className="text-lg font-semibold text-emerald-600">
+
+        {/* Points earned */}
+        <div className="space-y-1.5">
+          <p className="text-3xl font-black text-gray-900">
             +{claimed.points} point{claimed.points !== 1 ? 's' : ''}
           </p>
           <p className="text-sm text-gray-500">
-            {claimed.drinkQuantity} drink{claimed.drinkQuantity !== 1 ? 's' : ''} · {branchName}
+            {claimed.drinkQuantity} drink{claimed.drinkQuantity !== 1 ? 's' : ''} at {branchName}
           </p>
         </div>
-        <p className="text-sm text-gray-400">You can close this page now.</p>
+
+        {/* Balance */}
+        {claimed.newBalance !== null && (
+          <div
+            className="w-full rounded-2xl px-5 py-4 text-center"
+            style={{ background: `${branchColor}15` }}
+          >
+            <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: branchColor }}>
+              Points Balance
+            </p>
+            <p className="text-4xl font-black mt-1" style={{ color: branchColor }}>
+              {claimed.newBalance.toLocaleString()}
+            </p>
+            <p className="text-xs mt-1" style={{ color: branchColor, opacity: 0.7 }}>
+              10 points = 1 free drink
+            </p>
+          </div>
+        )}
+
+        {/* Done */}
+        <button
+          type="button"
+          onClick={() => window.close?.()}
+          className="w-full h-14 rounded-2xl text-base font-bold text-white"
+          style={{ background: branchColor }}
+        >
+          Done
+        </button>
       </div>
     )
   }
 
-  // ── LIFF loading ─────────────────────────────────────────────────────────
+  // ── LIFF loading ──────────────────────────────────────────────────────────────
   if (liffPending) {
     return (
       <div className="flex flex-col items-center gap-4 py-10">
         <Loader2 size={28} className="text-gray-300 animate-spin" />
-        <p className="text-sm text-gray-400">Checking your LINE account…</p>
+        <p className="text-sm text-gray-400">Setting up…</p>
       </div>
     )
   }
 
   return (
     <div className="space-y-5">
-      {/* Reward preview */}
+      {/* Reward banner */}
       <div
         className="flex items-center justify-between rounded-2xl px-5 py-5 text-white"
         style={{ background: branchColor }}
@@ -149,19 +168,21 @@ export default function ClaimForm({
         <Star size={52} className="opacity-25 fill-white" />
       </div>
 
-      {/* ── LINE auto-detected ─────────────────────────────────────────────── */}
+      {/* ── LINE identified ─────────────────────────────────────────────────── */}
       {lineCustomer && (
-        <div className="space-y-3">
-          <div className="flex items-center gap-3 rounded-2xl bg-[#06C755]/10 border border-[#06C755]/30 px-4 py-4">
-            <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-[#06C755]">
-              <svg viewBox="0 0 24 24" className="h-5 w-5 fill-white">
-                <path d="M12 2C6.48 2 2 6.16 2 11.25c0 4.58 3.87 8.4 9.08 9.12.35.07.84.23.96.52.11.26.07.67.03.94l-.15.91c-.05.26-.22 1.03.9.56 1.12-.47 6.05-3.56 8.25-6.1C22.66 15.01 22 13.2 22 11.25 22 6.16 17.52 2 12 2z"/>
-              </svg>
+        <div className="space-y-4">
+          {/* Clean greeting — no debug wording */}
+          <div className="rounded-2xl bg-gray-50 border border-gray-100 px-5 py-4 text-center">
+            <div
+              className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full text-2xl font-black text-white"
+              style={{ background: branchColor }}
+            >
+              {lineCustomer.name.charAt(0)}
             </div>
-            <div>
-              <p className="text-sm font-bold text-gray-900">{lineCustomer.name}</p>
-              <p className="text-xs text-green-700">Identified via LINE</p>
-            </div>
+            <p className="text-base font-bold text-gray-900">
+              Hi, {lineCustomer.name.split(' ')[0]}!
+            </p>
+            <p className="text-sm text-gray-400 mt-0.5">Ready to add your points</p>
           </div>
 
           {error && (
@@ -175,30 +196,32 @@ export default function ClaimForm({
             type="button"
             onClick={submit}
             disabled={isPending}
-            className="w-full rounded-2xl h-14 text-base font-bold text-white transition-colors disabled:opacity-40"
+            className="w-full h-14 rounded-2xl text-base font-bold text-white disabled:opacity-40"
             style={{ background: branchColor }}
           >
-            {isPending ? 'Claiming…' : `Claim ${points} Point${points !== 1 ? 's' : ''}`}
+            {isPending
+              ? <span className="flex items-center justify-center gap-2"><Loader2 size={18} className="animate-spin" /> Adding…</span>
+              : 'Claim Points'
+            }
           </button>
         </div>
       )}
 
-      {/* ── Phone fallback ─────────────────────────────────────────────────── */}
+      {/* ── Phone fallback ──────────────────────────────────────────────────── */}
       {!lineCustomer && (
         <div className="space-y-4">
-          {/* Show note if LINE was found but customer not linked */}
           {lineNotFound && (
             <div className="flex items-start gap-3 rounded-xl bg-amber-50 border border-amber-200 px-4 py-3">
               <AlertTriangle size={15} className="text-amber-500 flex-shrink-0 mt-0.5" />
               <p className="text-sm text-amber-700">
-                Your LINE account isn't linked yet. Enter your phone number below to claim.
+                Enter your registered phone number to claim.
               </p>
             </div>
           )}
 
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-2">
-              Your phone number
+              Phone number
             </label>
             <div className="relative">
               <Phone size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
@@ -208,21 +231,24 @@ export default function ClaimForm({
                 value={phone}
                 onChange={e => { setPhone(e.target.value); setError(null) }}
                 placeholder="0812345678"
-                autoFocus={!lineNotFound}
                 className="w-full h-14 pl-11 pr-4 rounded-xl border border-gray-200 text-lg font-medium text-gray-900 placeholder:text-gray-400 focus:outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-400/20 transition-colors"
               />
             </div>
 
-            {/* Phone match preview */}
+            {/* Customer confirmed — clean state, no debug text */}
             {phoneMatched && (
-              <div className="mt-3 flex items-center gap-3 rounded-xl bg-emerald-50 border border-emerald-200 px-4 py-3">
-                <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-emerald-200 text-sm font-bold text-emerald-800">
+              <div className="mt-3 rounded-xl bg-gray-50 border border-gray-100 px-4 py-3 flex items-center gap-3">
+                <div
+                  className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full text-sm font-bold text-white"
+                  style={{ background: branchColor }}
+                >
                   {phoneMatched.name.charAt(0)}
                 </div>
                 <div>
-                  <p className="text-sm font-semibold text-emerald-800">{phoneMatched.name}</p>
-                  <p className="text-xs text-emerald-600">Found by phone number</p>
+                  <p className="text-sm font-semibold text-gray-900">{phoneMatched.name}</p>
+                  <p className="text-xs text-gray-400">Ready to add {points} point{points !== 1 ? 's' : ''}</p>
                 </div>
+                <CheckCircle size={18} className="ml-auto flex-shrink-0 text-emerald-500" />
               </div>
             )}
           </div>
@@ -238,15 +264,20 @@ export default function ClaimForm({
             type="button"
             onClick={submit}
             disabled={isPending || !phoneMatched}
-            className="w-full rounded-2xl h-14 text-base font-bold text-white transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-            style={{ background: phoneMatched ? branchColor : undefined, backgroundColor: phoneMatched ? undefined : '#d1d5db' }}
+            className="w-full h-14 rounded-2xl text-base font-bold text-white transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
+            style={{ background: resolved ? branchColor : '#9ca3af' }}
           >
-            {isPending ? 'Claiming…' : `Claim ${points} Point${points !== 1 ? 's' : ''}`}
+            {isPending
+              ? <span className="flex items-center justify-center gap-2"><Loader2 size={18} className="animate-spin" /> Adding…</span>
+              : 'Claim Points'
+            }
           </button>
 
-          <p className="text-center text-sm text-gray-400">
-            Not registered? Ask staff to sign you up.
-          </p>
+          {!phoneMatched && (
+            <p className="text-center text-sm text-gray-400">
+              Not a member yet? Ask staff to sign you up.
+            </p>
+          )}
         </div>
       )}
     </div>

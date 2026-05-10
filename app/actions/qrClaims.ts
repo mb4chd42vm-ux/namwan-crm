@@ -105,5 +105,16 @@ export async function claimQRToken(formData: FormData) {
   revalidatePath(`/customers/${customer_id}`)
   revalidatePath('/dashboard')
 
-  return { points: row.points, drinkQuantity: row.drink_quantity }
+  // Fetch refreshed balance for success screen
+  const { data: updatedCustomer } = await supabase
+    .from('customers')
+    .select('total_points')
+    .eq('id', customer_id)
+    .single()
+
+  return {
+    points:        row.points,
+    drinkQuantity: row.drink_quantity,
+    newBalance:    updatedCustomer?.total_points ?? null,
+  }
 }
