@@ -241,7 +241,9 @@ function RegisterView({
       .catch(() => {})
   }, [])
 
-  async function submit() {
+  async function submit(e?: React.MouseEvent) {
+    e?.preventDefault()
+    e?.stopPropagation()
     if (step === 1) {
       if (phone.trim().length < 8) { setError('Enter a valid phone number'); return }
       setStep(2)
@@ -334,7 +336,7 @@ function RegisterView({
                 type="tel" inputMode="numeric"
                 value={phone}
                 onChange={e => { setPhone(e.target.value); setError(null) }}
-                onKeyDown={e => e.key === 'Enter' && submit()}
+                onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); submit() } }}
                 placeholder="0812345678"
                 autoFocus
                 className="w-full h-14 pl-11 pr-4 rounded-2xl border border-gray-200 text-lg font-medium text-gray-900 placeholder:text-gray-400 focus:outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-400/20 transition-colors"
@@ -347,6 +349,7 @@ function RegisterView({
               </div>
             )}
             <button
+              type="button"
               onClick={submit}
               disabled={phone.trim().length < 8}
               className="w-full h-14 rounded-2xl bg-brand-600 text-base font-bold text-white flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-brand-700 transition-colors"
@@ -472,10 +475,13 @@ function RegisterView({
             </div>
 
             {/* Marketing consent */}
-            <label className="flex items-start gap-3 cursor-pointer">
+            <button
+              type="button"
+              onClick={e => { e.preventDefault(); setMarketingConsent(v => !v) }}
+              className="flex items-start gap-3 text-left w-full"
+            >
               <div
-                onClick={() => setMarketingConsent(v => !v)}
-                className={`mt-0.5 flex-shrink-0 h-5 w-5 rounded border-2 flex items-center justify-center transition-colors cursor-pointer ${
+                className={`mt-0.5 flex-shrink-0 h-5 w-5 rounded border-2 flex items-center justify-center transition-colors ${
                   marketingConsent ? 'bg-brand-600 border-brand-600' : 'bg-white border-gray-300'
                 }`}
               >
@@ -484,7 +490,7 @@ function RegisterView({
               <span className="text-sm text-gray-600 leading-snug">
                 I agree to receive promotional messages and special offers from Namwan
               </span>
-            </label>
+            </button>
 
             {error && (
               <div className="flex items-start gap-2.5 rounded-xl bg-red-50 border border-red-100 px-4 py-3">
@@ -495,13 +501,15 @@ function RegisterView({
 
             <div className="flex gap-3">
               <button
-                onClick={() => { setStep(1); setError(null) }}
+                type="button"
+                onClick={e => { e.preventDefault(); setStep(1); setError(null) }}
                 disabled={isPending}
                 className="flex-1 h-12 rounded-2xl border border-gray-200 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50"
               >
                 Back
               </button>
               <button
+                type="button"
                 onClick={submit}
                 disabled={isPending}
                 className="flex-1 h-12 rounded-2xl bg-brand-600 text-sm font-bold text-white flex items-center justify-center gap-2 disabled:opacity-50 hover:bg-brand-700 transition-colors"

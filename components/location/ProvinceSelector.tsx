@@ -18,23 +18,60 @@ interface Props {
 type Step = 'region' | 'province'
 
 export default function ProvinceSelector({ value, onChange }: Props) {
-  const [step,    setStep]    = useState<Step>('region')
-  const [region,  setRegion]  = useState<Region | null>(null)
-  const [search,  setSearch]  = useState('')
+  const [step,   setStep]   = useState<Step>('region')
+  const [region, setRegion] = useState<Region | null>(null)
+  const [search, setSearch] = useState('')
+
+  // ── Helpers ───────────────────────────────────────────────────────────────────
+
+  function selectRegion(e: React.MouseEvent, r: Region) {
+    e.preventDefault()
+    e.stopPropagation()
+    setRegion(r)
+    setSearch('')
+    setStep('province')
+  }
+
+  function selectProvince(e: React.MouseEvent, p: string) {
+    e.preventDefault()
+    e.stopPropagation()
+    if (!region) return
+    onChange({
+      province: p,
+      region:   region.label,
+      regionId: region.id,
+    })
+  }
+
+  function goBack(e: React.MouseEvent) {
+    e.preventDefault()
+    e.stopPropagation()
+    setStep('region')
+    setSearch('')
+  }
+
+  function clearSelection(e: React.MouseEvent) {
+    e.preventDefault()
+    e.stopPropagation()
+    const r = value ? (REGIONS.find(r => r.id === value.regionId) ?? null) : null
+    setRegion(r)
+    setStep(r ? 'province' : 'region')
+    setSearch('')
+    onChange(null)
+  }
+
+  function clearSearch(e: React.MouseEvent) {
+    e.preventDefault()
+    e.stopPropagation()
+    setSearch('')
+  }
 
   // ── Already has a value → show summary chip ──────────────────────────────────
   if (value) {
     return (
       <button
         type="button"
-        onClick={() => {
-          // Re-enter selection starting at region
-          const r = REGIONS.find(r => r.id === value.regionId) ?? null
-          setRegion(r)
-          setStep(r ? 'province' : 'region')
-          setSearch('')
-          onChange(null)
-        }}
+        onClick={clearSelection}
         className="flex w-full items-center gap-3 rounded-2xl border border-brand-200 bg-brand-50 px-4 py-3 text-left active:scale-[0.98] transition-transform"
       >
         <MapPin size={16} className="text-brand-600 flex-shrink-0" />
@@ -58,14 +95,10 @@ export default function ProvinceSelector({ value, onChange }: Props) {
             <button
               key={r.id}
               type="button"
-              onClick={() => {
-                setRegion(r)
-                setSearch('')
-                setStep('province')
-              }}
+              onClick={e => selectRegion(e, r)}
               className="flex items-center gap-2.5 rounded-2xl border border-gray-200 bg-white px-3.5 py-3.5 text-left hover:border-brand-300 hover:bg-brand-50 active:scale-[0.97] transition-all"
             >
-              <span className="text-xl leading-none flex-shrink-0">{r.emoji}</span>
+              <span className="text-xl leading-none flex-shrink-0" aria-hidden>{r.emoji}</span>
               <span className="text-xs font-semibold text-gray-800 leading-snug">{r.label}</span>
             </button>
           ))}
@@ -75,7 +108,8 @@ export default function ProvinceSelector({ value, onChange }: Props) {
   }
 
   // ── Step 2: Province picker ───────────────────────────────────────────────────
-  const provinces = region?.provinces ?? []
+  // region must be non-null here (step === 'province' only set via selectRegion)
+  const provinces: string[] = region?.provinces ?? []
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase()
@@ -85,33 +119,35 @@ export default function ProvinceSelector({ value, onChange }: Props) {
 
   return (
     <div className="space-y-3">
-      {/* Header row */}
+      {/* Back button */}
       <div className="flex items-center gap-2">
         <button
           type="button"
-          onClick={() => { setStep('region'); setSearch('') }}
+          onClick={goBack}
           className="flex items-center gap-1 rounded-xl bg-gray-100 px-3 py-2 text-xs font-semibold text-gray-600 hover:bg-gray-200 active:scale-95 transition-all flex-shrink-0"
         >
-          <ChevronLeft size={13} /> {region?.emoji} {region?.label}
+          <ChevronLeft size={13} />
+          <span aria-hidden>{region?.emoji ?? ''}</span>
+          {region?.label ?? 'Back'}
         </button>
       </div>
 
-      {/* Search */}
+      {/* Search — no autoFocus (crashes LINE iOS WebView) */}
       <div className="relative">
         <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
         <input
           type="text"
           value={search}
           onChange={e => setSearch(e.target.value)}
+          onKeyDown={e => { if (e.key === 'Enter') e.preventDefault() }}
           placeholder="Search province…"
-          autoFocus
           className="w-full h-11 pl-9 pr-9 rounded-xl border border-gray-200 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-400/20 transition-colors bg-white"
         />
-        {search && (
+        {search.length > 0 && (
           <button
             type="button"
-            onClick={() => setSearch('')}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+            onClick={clearSearch}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-1"
           >
             <X size={14} />
           </button>
@@ -120,20 +156,16 @@ export default function ProvinceSelector({ value, onChange }: Props) {
 
       {/* Province chips */}
       {filtered.length === 0 ? (
-        <p className="text-center text-xs text-gray-400 py-4">No provinces match "{search}"</p>
+        <p className="text-center text-xs text-gray-400 py-4">
+          No provinces match &ldquo;{search}&rdquo;
+        </p>
       ) : (
         <div className="flex flex-wrap gap-2 max-h-[280px] overflow-y-auto pr-0.5">
           {filtered.map(p => (
             <button
               key={p}
               type="button"
-              onClick={() => {
-                onChange({
-                  province: p,
-                  region:   region!.label,
-                  regionId: region!.id,
-                })
-              }}
+              onClick={e => selectProvince(e, p)}
               className="flex items-center gap-1.5 rounded-xl border border-gray-200 bg-white px-3.5 py-2.5 text-sm font-medium text-gray-700 hover:border-brand-400 hover:bg-brand-50 hover:text-brand-800 active:scale-[0.97] transition-all"
             >
               {p}
