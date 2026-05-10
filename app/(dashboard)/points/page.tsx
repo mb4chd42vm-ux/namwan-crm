@@ -1,5 +1,5 @@
 import Topbar from '@/components/layout/Topbar'
-import { Star, QrCode } from 'lucide-react'
+import { Star, QrCode, ScanLine } from 'lucide-react'
 import Link from 'next/link'
 import { TX_META, pts, fmt, type TxType } from '@/data/mock'
 import { createClient } from '@/lib/supabase/server'
@@ -89,12 +89,20 @@ export default async function PointsPage({
         {/* Header */}
         <div className="flex items-center justify-between">
           <p className="text-[13px] font-semibold text-gray-700">Transaction Log</p>
-          <Link
-            href="/points/qr/create"
-            className="flex items-center gap-2 rounded-xl bg-amber-500 px-4 py-2 text-xs font-semibold text-white hover:bg-amber-600 transition-colors"
-          >
-            <QrCode size={13} /> Generate QR
-          </Link>
+          <div className="flex gap-2">
+            <Link
+              href="/points/redeem/scan"
+              className="flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 text-xs font-semibold text-white hover:bg-emerald-700 transition-colors"
+            >
+              <ScanLine size={13} /> Scan Redeem QR
+            </Link>
+            <Link
+              href="/points/qr/create"
+              className="flex items-center gap-2 rounded-xl bg-amber-500 px-4 py-2 text-xs font-semibold text-white hover:bg-amber-600 transition-colors"
+            >
+              <QrCode size={13} /> Generate QR
+            </Link>
+          </div>
         </div>
 
         {/* Table */}

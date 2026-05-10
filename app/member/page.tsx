@@ -3,25 +3,33 @@
 import { useEffect, useRef, useState, useTransition } from 'react'
 import {
   Star, Coffee, Gift, Phone, Loader2, AlertTriangle,
-  ShoppingBag, ChevronRight, CheckCircle,
+  ShoppingBag, ChevronRight, CheckCircle, QrCode, Clock,
+  User, MapPin, Heart, Megaphone,
 } from 'lucide-react'
 import { useLiff, type LiffProfile } from '@/hooks/useLiff'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
+interface Branch {
+  id:        string
+  name:      string
+  color_hex: string
+}
+
 interface Customer {
-  id:             string
-  name:           string
-  phone:          string
-  line_id:        string
-  picture_url:    string | null
-  total_points:   number
-  total_spending: number
-  visit_count:    number
-  last_visit_at:  string | null
-  segment:        string
-  home_branch_id: string | null
-  is_active:      boolean
+  id:               string
+  name:             string
+  phone:            string
+  line_id:          string
+  picture_url:      string | null
+  total_points:     number
+  total_spending:   number
+  visit_count:      number
+  last_visit_at:    string | null
+  segment:          string
+  home_branch_id:   string | null
+  is_active:        boolean
+  profile_completed?: boolean
 }
 
 interface Tx {
@@ -45,6 +53,8 @@ interface Purchase {
 }
 
 // ── Constants ─────────────────────────────────────────────────────────────────
+
+const POINTS_PER_DRINK = 10
 
 const SEGMENT_INFO: Record<string, { label: string; color: string; bg: string }> = {
   vip:       { label: 'VIP',       color: 'text-amber-700',   bg: 'bg-amber-100'   },
@@ -88,14 +98,12 @@ function AppHeader() {
 }
 
 // ── Skeleton loading ──────────────────────────────────────────────────────────
-// Shows immediately while LIFF initializes so the page never feels blank.
 
 function SkeletonView() {
   return (
     <Shell>
       <AppHeader />
       <div className="px-5 pb-6 space-y-4 animate-pulse">
-        {/* Profile row */}
         <div className="flex items-center gap-3">
           <div className="h-12 w-12 rounded-full bg-white/20" />
           <div className="flex-1 space-y-2">
@@ -103,7 +111,6 @@ function SkeletonView() {
             <div className="h-3 w-24 rounded-full bg-white/10" />
           </div>
         </div>
-        {/* Points card */}
         <div className="rounded-3xl bg-white/10 p-5 space-y-4">
           <div className="space-y-2">
             <div className="h-3 w-24 rounded-full bg-white/20" />
@@ -111,11 +118,8 @@ function SkeletonView() {
           </div>
           <div className="h-3 rounded-full bg-white/15" />
         </div>
-        {/* Stats row */}
         <div className="grid grid-cols-3 gap-2">
-          {[0, 1, 2].map(i => (
-            <div key={i} className="rounded-2xl bg-white/10 h-16" />
-          ))}
+          {[0, 1, 2].map(i => <div key={i} className="rounded-2xl bg-white/10 h-16" />)}
         </div>
       </div>
       <div className="flex-1 bg-[#f8f7f5] rounded-t-3xl flex items-center justify-center">
@@ -131,38 +135,31 @@ function OpenInLineView({
   onOpenInLine,
   onBrowserLogin,
 }: {
-  onOpenInLine:    () => void
-  onBrowserLogin:  () => void
+  onOpenInLine:   () => void
+  onBrowserLogin: () => void
 }) {
   return (
     <Shell>
       <div className="flex-1 flex flex-col items-center justify-center px-6 text-center gap-7">
-        {/* Icon */}
         <div className="flex h-24 w-24 items-center justify-center rounded-3xl bg-white/10">
           <Star size={44} className="text-amber-300 fill-amber-300" />
         </div>
-
-        {/* Copy */}
         <div className="space-y-2">
           <p className="text-2xl font-bold text-white">Namwan Loyalty</p>
           <p className="text-sm text-white/60 leading-relaxed">
             Open this page inside LINE to view your points balance and membership card.
           </p>
         </div>
-
-        {/* Primary CTA */}
         <div className="w-full space-y-3">
           <button
             onClick={onOpenInLine}
             className="w-full flex items-center justify-center gap-3 rounded-2xl bg-[#06C755] h-14 text-base font-bold text-white shadow-lg active:scale-[0.97] transition-transform"
           >
-            {/* LINE logo */}
             <svg viewBox="0 0 24 24" className="h-6 w-6 fill-white" aria-hidden>
               <path d="M12 2C6.48 2 2 6.16 2 11.25c0 4.58 3.87 8.4 9.08 9.12.35.07.84.23.96.52.11.26.07.67.03.94l-.15.91c-.05.26-.22 1.03.9.56 1.12-.47 6.05-3.56 8.25-6.1C22.66 15.01 22 13.2 22 11.25 22 6.16 17.52 2 12 2z"/>
             </svg>
             Open in LINE
           </button>
-
           <button
             onClick={onBrowserLogin}
             className="w-full rounded-2xl bg-white/10 h-12 text-sm font-semibold text-white/70 hover:bg-white/15 active:scale-[0.97] transition-all"
@@ -170,8 +167,6 @@ function OpenInLineView({
             Continue in browser
           </button>
         </div>
-
-        {/* How it works */}
         <div className="w-full rounded-2xl bg-white/10 p-4 text-left space-y-3">
           {[
             { icon: Coffee, text: '1 drink = 1 point' },
@@ -212,7 +207,7 @@ function ErrorView({ message, onRetry }: { message: string; onRetry?: () => void
   )
 }
 
-// ── Registration view ─────────────────────────────────────────────────────────
+// ── Registration view — extended onboarding ───────────────────────────────────
 
 function RegisterView({
   profile,
@@ -221,13 +216,39 @@ function RegisterView({
   profile:  LiffProfile
   onLinked: (customer: Customer) => void
 }) {
-  const [phone, setPhone]   = useState('')
-  const [isPending, start]  = useTransition()
-  const [error, setError]   = useState<string | null>(null)
+  const [step,      setStep]      = useState<1 | 2>(1)
+  const [isPending, start]        = useTransition()
+  const [error,     setError]     = useState<string | null>(null)
+  const [branches,  setBranches]  = useState<Branch[]>([])
+
+  // Step 1 fields
+  const [phone,     setPhone]     = useState('')
+
+  // Step 2 fields
+  const [birthday,          setBirthday]          = useState('')
+  const [gender,            setGender]            = useState('')
+  const [areaOrProvince,    setAreaOrProvince]     = useState('')
+  const [favoriteBranchId,  setFavoriteBranchId]  = useState('')
+  const [discoveredFrom,    setDiscoveredFrom]     = useState('')
+  const [marketingConsent,  setMarketingConsent]   = useState(false)
+
+  // Fetch branches for step 2
+  useEffect(() => {
+    fetch('/api/branches')
+      .then(r => r.json())
+      .then(d => setBranches(d.branches ?? []))
+      .catch(() => {})
+  }, [])
 
   async function submit() {
-    const trimmed = phone.trim()
-    if (trimmed.length < 8) { setError('Enter a valid phone number'); return }
+    if (step === 1) {
+      if (phone.trim().length < 8) { setError('Enter a valid phone number'); return }
+      setStep(2)
+      setError(null)
+      return
+    }
+
+    // Step 2 — submit full form
     setError(null)
     start(async () => {
       try {
@@ -235,16 +256,23 @@ function RegisterView({
           method:  'POST',
           headers: { 'Content-Type': 'application/json' },
           body:    JSON.stringify({
-            line_id:      profile.userId,
-            display_name: profile.displayName,
-            picture_url:  profile.pictureUrl,
-            phone:        trimmed,
+            line_id:            profile.userId,
+            display_name:       profile.displayName,
+            picture_url:        profile.pictureUrl,
+            phone:              phone.trim(),
+            birthday:           birthday   || undefined,
+            gender:             gender     || undefined,
+            area_or_province:   areaOrProvince || undefined,
+            favorite_branch_id: favoriteBranchId || undefined,
+            discovered_from:    discoveredFrom || undefined,
+            marketing_consent:  marketingConsent,
           }),
         })
         const data = await res.json()
 
         if (data.status === 'already_linked') {
           setError('This phone is already linked to a different LINE account.')
+          setStep(1)
           return
         }
         if (!res.ok || !data.customer) {
@@ -284,49 +312,219 @@ function RegisterView({
           </div>
         </div>
 
-        <div className="rounded-2xl bg-white border border-gray-100 p-5 shadow-sm space-y-4">
-          <div>
-            <p className="text-base font-bold text-gray-900">Link your account</p>
-            <p className="text-sm text-gray-500 mt-1">Enter your phone number to find or create your loyalty account.</p>
-          </div>
-
-          <div className="relative">
-            <Phone size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
-            <input
-              type="tel" inputMode="numeric"
-              value={phone}
-              onChange={e => { setPhone(e.target.value); setError(null) }}
-              onKeyDown={e => e.key === 'Enter' && submit()}
-              placeholder="0812345678"
-              autoFocus
-              className="w-full h-14 pl-11 pr-4 rounded-2xl border border-gray-200 text-lg font-medium text-gray-900 placeholder:text-gray-400 focus:outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-400/20 transition-colors"
-            />
-          </div>
-
-          {error && (
-            <div className="flex items-start gap-2.5 rounded-xl bg-red-50 border border-red-100 px-4 py-3">
-              <AlertTriangle size={15} className="text-red-500 flex-shrink-0 mt-0.5" />
-              <p className="text-sm text-red-700">{error}</p>
-            </div>
-          )}
-
-          <button
-            onClick={submit}
-            disabled={isPending || phone.trim().length < 8}
-            className="w-full h-14 rounded-2xl bg-brand-600 text-base font-bold text-white flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-brand-700 transition-colors"
-          >
-            {isPending
-              ? <><Loader2 size={18} className="animate-spin" /> Linking…</>
-              : <>Continue <ChevronRight size={18} /></>
-            }
-          </button>
+        {/* Step indicator */}
+        <div className="flex items-center gap-2">
+          {[1, 2].map(s => (
+            <div key={s} className={`h-1.5 flex-1 rounded-full transition-colors ${step >= s ? 'bg-brand-500' : 'bg-gray-200'}`} />
+          ))}
         </div>
 
+        {/* Step 1 — phone */}
+        {step === 1 && (
+          <div className="rounded-2xl bg-white border border-gray-100 p-5 shadow-sm space-y-4">
+            <div>
+              <p className="text-base font-bold text-gray-900">Link your account</p>
+              <p className="text-sm text-gray-500 mt-1">Enter your phone number to find or create your loyalty account.</p>
+            </div>
+            <div className="relative">
+              <Phone size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+              <input
+                type="tel" inputMode="numeric"
+                value={phone}
+                onChange={e => { setPhone(e.target.value); setError(null) }}
+                onKeyDown={e => e.key === 'Enter' && submit()}
+                placeholder="0812345678"
+                autoFocus
+                className="w-full h-14 pl-11 pr-4 rounded-2xl border border-gray-200 text-lg font-medium text-gray-900 placeholder:text-gray-400 focus:outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-400/20 transition-colors"
+              />
+            </div>
+            {error && (
+              <div className="flex items-start gap-2.5 rounded-xl bg-red-50 border border-red-100 px-4 py-3">
+                <AlertTriangle size={15} className="text-red-500 flex-shrink-0 mt-0.5" />
+                <p className="text-sm text-red-700">{error}</p>
+              </div>
+            )}
+            <button
+              onClick={submit}
+              disabled={phone.trim().length < 8}
+              className="w-full h-14 rounded-2xl bg-brand-600 text-base font-bold text-white flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-brand-700 transition-colors"
+            >
+              Next <ChevronRight size={18} />
+            </button>
+          </div>
+        )}
+
+        {/* Step 2 — profile details */}
+        {step === 2 && (
+          <div className="rounded-2xl bg-white border border-gray-100 p-5 shadow-sm space-y-4">
+            <div>
+              <p className="text-base font-bold text-gray-900">Tell us about you</p>
+              <p className="text-sm text-gray-500 mt-1">All fields are optional — skip anything you prefer not to share.</p>
+            </div>
+
+            {/* Birthday */}
+            <div>
+              <label className="flex items-center gap-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
+                <Heart size={11} /> Birthday
+              </label>
+              <input
+                type="date"
+                value={birthday}
+                onChange={e => setBirthday(e.target.value)}
+                className="w-full h-11 rounded-xl border border-gray-200 px-4 text-sm text-gray-900 focus:outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-400/20 transition-colors"
+              />
+            </div>
+
+            {/* Gender */}
+            <div>
+              <label className="flex items-center gap-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
+                <User size={11} /> Gender
+              </label>
+              <div className="flex gap-2 flex-wrap">
+                {[
+                  { value: 'male',              label: 'Male' },
+                  { value: 'female',            label: 'Female' },
+                  { value: 'other',             label: 'Other' },
+                  { value: 'prefer_not_to_say', label: 'Prefer not to say' },
+                ].map(opt => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => setGender(g => g === opt.value ? '' : opt.value)}
+                    className={`rounded-xl border px-3 py-2 text-xs font-semibold transition-all ${
+                      gender === opt.value
+                        ? 'bg-brand-600 border-brand-600 text-white'
+                        : 'border-gray-200 text-gray-600 bg-white hover:border-gray-300'
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Area / Province */}
+            <div>
+              <label className="flex items-center gap-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
+                <MapPin size={11} /> Area / Province
+              </label>
+              <input
+                type="text"
+                value={areaOrProvince}
+                onChange={e => setAreaOrProvince(e.target.value)}
+                placeholder="e.g. Bangkok, Chiang Mai…"
+                className="w-full h-11 rounded-xl border border-gray-200 px-4 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-400/20 transition-colors"
+              />
+            </div>
+
+            {/* Favourite branch */}
+            {branches.length > 0 && (
+              <div>
+                <label className="flex items-center gap-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
+                  <Star size={11} /> Favourite Branch
+                </label>
+                <div className="flex gap-2 flex-wrap">
+                  {branches.map(b => (
+                    <button
+                      key={b.id}
+                      type="button"
+                      onClick={() => setFavoriteBranchId(id => id === b.id ? '' : b.id)}
+                      className={`flex items-center gap-1.5 rounded-xl border px-3 py-2 text-xs font-semibold transition-all ${
+                        favoriteBranchId === b.id
+                          ? 'border-transparent text-white shadow-sm'
+                          : 'border-gray-200 text-gray-600 bg-white hover:border-gray-300'
+                      }`}
+                      style={favoriteBranchId === b.id ? { background: b.color_hex } : {}}
+                    >
+                      <span
+                        className="h-2 w-2 rounded-full flex-shrink-0"
+                        style={{ background: favoriteBranchId === b.id ? 'rgba(255,255,255,0.6)' : b.color_hex }}
+                      />
+                      {b.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* How did you hear */}
+            <div>
+              <label className="flex items-center gap-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
+                <Megaphone size={11} /> How did you hear about us?
+              </label>
+              <div className="flex gap-2 flex-wrap">
+                {[
+                  { value: 'social_media', label: 'Social Media' },
+                  { value: 'friend',       label: 'Friend'       },
+                  { value: 'walk_in',      label: 'Walk-in'      },
+                  { value: 'other',        label: 'Other'        },
+                ].map(opt => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => setDiscoveredFrom(d => d === opt.value ? '' : opt.value)}
+                    className={`rounded-xl border px-3 py-2 text-xs font-semibold transition-all ${
+                      discoveredFrom === opt.value
+                        ? 'bg-brand-600 border-brand-600 text-white'
+                        : 'border-gray-200 text-gray-600 bg-white hover:border-gray-300'
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Marketing consent */}
+            <label className="flex items-start gap-3 cursor-pointer">
+              <div
+                onClick={() => setMarketingConsent(v => !v)}
+                className={`mt-0.5 flex-shrink-0 h-5 w-5 rounded border-2 flex items-center justify-center transition-colors cursor-pointer ${
+                  marketingConsent ? 'bg-brand-600 border-brand-600' : 'bg-white border-gray-300'
+                }`}
+              >
+                {marketingConsent && <CheckCircle size={12} className="text-white" />}
+              </div>
+              <span className="text-sm text-gray-600 leading-snug">
+                I agree to receive promotional messages and special offers from Namwan
+              </span>
+            </label>
+
+            {error && (
+              <div className="flex items-start gap-2.5 rounded-xl bg-red-50 border border-red-100 px-4 py-3">
+                <AlertTriangle size={15} className="text-red-500 flex-shrink-0 mt-0.5" />
+                <p className="text-sm text-red-700">{error}</p>
+              </div>
+            )}
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => { setStep(1); setError(null) }}
+                disabled={isPending}
+                className="flex-1 h-12 rounded-2xl border border-gray-200 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50"
+              >
+                Back
+              </button>
+              <button
+                onClick={submit}
+                disabled={isPending}
+                className="flex-1 h-12 rounded-2xl bg-brand-600 text-sm font-bold text-white flex items-center justify-center gap-2 disabled:opacity-50 hover:bg-brand-700 transition-colors"
+              >
+                {isPending
+                  ? <><Loader2 size={16} className="animate-spin" /> Joining…</>
+                  : <>Join Namwan <ChevronRight size={16} /></>
+                }
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* How it works */}
         <div className="rounded-2xl bg-white border border-gray-100 p-5 shadow-sm space-y-3">
           <p className="text-sm font-semibold text-gray-900">How it works</p>
           {[
-            { icon: Coffee, text: '1 drink = 1 point', color: 'text-amber-600', bg: 'bg-amber-50' },
-            { icon: Star,   text: '10 points = 1 free drink', color: 'text-brand-600', bg: 'bg-brand-50' },
+            { icon: Coffee, text: '1 drink = 1 point',               color: 'text-amber-600', bg: 'bg-amber-50'  },
+            { icon: Star,   text: '10 points = 1 free drink',         color: 'text-brand-600', bg: 'bg-brand-50'  },
             { icon: Gift,   text: 'Points shared across all branches', color: 'text-emerald-600', bg: 'bg-emerald-50' },
           ].map(({ icon: Icon, text, color, bg }) => (
             <div key={text} className="flex items-center gap-3">
@@ -342,9 +540,95 @@ function RegisterView({
   )
 }
 
-// ── Member card view ──────────────────────────────────────────────────────────
+// ── Redeem QR overlay ─────────────────────────────────────────────────────────
 
-const POINTS_PER_DRINK = 10
+interface RedeemQR {
+  token:      string
+  redeemUrl:  string
+  expiresAt:  string
+  qrSvg:      string
+}
+
+function RedeemQRView({
+  redeemQR,
+  customer,
+  onClose,
+}: {
+  redeemQR: RedeemQR
+  customer: Customer
+  onClose:  () => void
+}) {
+  const [secondsLeft, setSecondsLeft] = useState(() => {
+    const diff = new Date(redeemQR.expiresAt).getTime() - Date.now()
+    return Math.max(0, Math.floor(diff / 1000))
+  })
+
+  useEffect(() => {
+    if (secondsLeft <= 0) return
+    const id = setInterval(() => {
+      setSecondsLeft(s => {
+        if (s <= 1) { clearInterval(id); return 0 }
+        return s - 1
+      })
+    }, 1000)
+    return () => clearInterval(id)
+  }, [secondsLeft])
+
+  const mins = Math.floor(secondsLeft / 60)
+  const secs = secondsLeft % 60
+  const expired = secondsLeft === 0
+
+  return (
+    <div className="fixed inset-0 z-50 flex flex-col bg-gradient-to-br from-brand-700 via-brand-800 to-brand-900">
+      <AppHeader />
+      <div className="flex-1 flex flex-col items-center justify-center px-5 pb-10 gap-6">
+
+        {/* Instruction */}
+        <div className="text-center space-y-1">
+          <p className="text-xl font-bold text-white">Show this QR to staff</p>
+          <p className="text-sm text-white/60">They will scan and confirm your free drink</p>
+        </div>
+
+        {/* QR card */}
+        <div className="w-full max-w-[300px] rounded-3xl bg-white p-5 shadow-2xl space-y-4">
+          {/* QR code */}
+          <div
+            className="w-full aspect-square rounded-2xl overflow-hidden"
+            dangerouslySetInnerHTML={{ __html: redeemQR.qrSvg }}
+          />
+
+          {/* Timer */}
+          <div className={`flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 ${
+            expired ? 'bg-red-50 border border-red-200' : 'bg-amber-50 border border-amber-200'
+          }`}>
+            <Clock size={14} className={expired ? 'text-red-500' : 'text-amber-600'} />
+            <span className={`text-sm font-bold tabular-nums ${expired ? 'text-red-600' : 'text-amber-700'}`}>
+              {expired
+                ? 'QR Expired'
+                : `${mins}:${secs.toString().padStart(2, '0')} remaining`
+              }
+            </span>
+          </div>
+
+          {/* Member info */}
+          <div className="text-center">
+            <p className="text-sm font-semibold text-gray-900">{customer.name}</p>
+            <p className="text-xs text-gray-400">Redeem 1 Free Drink · −{POINTS_PER_DRINK} pts</p>
+          </div>
+        </div>
+
+        <button
+          onClick={onClose}
+          className="w-full max-w-[300px] rounded-2xl bg-white/10 py-3.5 text-sm font-semibold text-white/70 hover:bg-white/15 transition-colors"
+        >
+          Cancel
+        </button>
+      </div>
+    </div>
+  )
+}
+
+// ── Member card view ──────────────────────────────────────────────────────────
 
 function MemberView({
   customer: initialCustomer,
@@ -360,10 +644,9 @@ function MemberView({
   const [txs,      setTxs]      = useState(initialTxs)
 
   // Redeem flow
-  const [redeemState,     setRedeemState]     = useState<'idle' | 'pending' | 'success' | 'error'>('idle')
-  const [redeemError,     setRedeemError]     = useState<string | null>(null)
-  const [newBalance,      setNewBalance]      = useState<number | null>(null)
-  const [redeemTimestamp, setRedeemTimestamp] = useState<string | null>(null)
+  const [redeemState, setRedeemState] = useState<'idle' | 'pending' | 'error'>('idle')
+  const [redeemError, setRedeemError] = useState<string | null>(null)
+  const [redeemQR,    setRedeemQR]    = useState<RedeemQR | null>(null)
 
   const canRedeem = customer.total_points >= POINTS_PER_DRINK
 
@@ -371,31 +654,31 @@ function MemberView({
     setRedeemState('pending')
     setRedeemError(null)
     try {
-      const res  = await fetch('/api/liff/redeem', {
+      // 1. Create redeem request (no points deducted yet)
+      const res  = await fetch('/api/redeem', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
         body:    JSON.stringify({ line_id: customer.line_id }),
       })
       const data = await res.json()
+
       if (!res.ok) {
         setRedeemState('error')
-        setRedeemError(data.error ?? 'Redemption failed')
+        setRedeemError(data.error ?? 'Could not create redemption request')
         return
       }
-      const ts = data.redeemed_at ?? new Date().toISOString()
-      setNewBalance(data.new_balance)
-      setRedeemTimestamp(ts)
-      setCustomer(c => ({ ...c, total_points: data.new_balance }))
-      setTxs(prev => [{
-        id:            `local-${Date.now()}`,
-        type:          'redeem',
-        points:        -POINTS_PER_DRINK,
-        balance_after: data.new_balance,
-        note:          'Redeemed 1 free drink via LINE Member',
-        created_at:    ts,
-        branches:      null,
-      }, ...prev])
-      setRedeemState('success')
+
+      // 2. Fetch QR SVG
+      const qrRes = await fetch(`/api/qr?url=${encodeURIComponent(data.redeem_url)}`)
+      const qrSvg = qrRes.ok ? await qrRes.text() : ''
+
+      setRedeemQR({
+        token:     data.token,
+        redeemUrl: data.redeem_url,
+        expiresAt: data.expires_at,
+        qrSvg,
+      })
+      setRedeemState('idle')
     } catch {
       setRedeemState('error')
       setRedeemError('Connection error. Please try again.')
@@ -407,75 +690,14 @@ function MemberView({
   const freeDrinks   = Math.floor(customer.total_points / 10)
   const seg          = SEGMENT_INFO[customer.segment] ?? SEGMENT_INFO['new']
 
-  // ── Redeem success — full-screen receipt view ────────────────────────────────
-  if (redeemState === 'success' && redeemTimestamp !== null && newBalance !== null) {
-    const ts  = new Date(redeemTimestamp)
-    const day = ts.toLocaleDateString('en-GB', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' })
-    const time = ts.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
+  // Show QR overlay
+  if (redeemQR) {
     return (
-      <Shell>
-        <AppHeader />
-        <div className="flex-1 flex flex-col items-center justify-center px-5 pb-10 gap-6">
-
-          {/* Animated check */}
-          <div className="flex h-20 w-20 items-center justify-center rounded-full bg-emerald-400/20 border-2 border-emerald-300/40">
-            <CheckCircle size={44} className="text-emerald-300" />
-          </div>
-
-          {/* Voucher card */}
-          <div className="w-full rounded-3xl bg-white overflow-hidden shadow-2xl">
-            {/* Green header strip */}
-            <div className="bg-emerald-500 px-6 py-4 text-center">
-              <p className="text-xs font-bold text-emerald-100 uppercase tracking-widest">Redeemed</p>
-              <p className="text-3xl font-black text-white mt-0.5">1 Free Drink</p>
-            </div>
-
-            {/* Dashed divider */}
-            <div className="relative flex items-center px-4">
-              <div className="absolute -left-3 h-6 w-6 rounded-full bg-brand-800" />
-              <div className="flex-1 border-t-2 border-dashed border-gray-200 my-0" />
-              <div className="absolute -right-3 h-6 w-6 rounded-full bg-brand-800" />
-            </div>
-
-            {/* Receipt body */}
-            <div className="px-6 py-5 space-y-3">
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-400">Member</span>
-                <span className="font-semibold text-gray-900">{customer.name}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-400">Date</span>
-                <span className="font-semibold text-gray-900">{day}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-400">Time</span>
-                <span className="font-semibold text-gray-900">{time}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-400">Points used</span>
-                <span className="font-bold text-red-500">−{POINTS_PER_DRINK} pts</span>
-              </div>
-              <div className="flex justify-between text-sm border-t border-dashed border-gray-200 pt-3 mt-1">
-                <span className="font-semibold text-gray-700">Remaining balance</span>
-                <span className="font-black text-gray-900">{newBalance} pts</span>
-              </div>
-            </div>
-
-            {/* Footer instruction */}
-            <div className="mx-5 mb-5 rounded-2xl bg-amber-50 border border-amber-100 px-4 py-3 text-center">
-              <p className="text-xs font-bold text-amber-700">Show this screen to staff at any branch</p>
-              <p className="text-[10px] text-amber-600 mt-0.5">Valid at the time shown above</p>
-            </div>
-          </div>
-
-          <button
-            onClick={() => setRedeemState('idle')}
-            className="w-full rounded-2xl bg-white/10 py-3.5 text-sm font-semibold text-white/70 hover:bg-white/15 transition-colors"
-          >
-            Back to my card
-          </button>
-        </div>
-      </Shell>
+      <RedeemQRView
+        redeemQR={redeemQR}
+        customer={customer}
+        onClose={() => setRedeemQR(null)}
+      />
     )
   }
 
@@ -532,7 +754,7 @@ function MemberView({
             </div>
             <p className="text-xs text-white/50">
               {drinksToFree === 0
-                ? 'Free drink ready — show this to staff!'
+                ? 'Free drink ready — tap Redeem!'
                 : `${drinksToFree} more drink${drinksToFree !== 1 ? 's' : ''} to earn a free one`}
             </p>
           </div>
@@ -546,9 +768,9 @@ function MemberView({
             className="w-full h-14 rounded-2xl bg-amber-300 text-amber-900 font-bold text-base flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed active:scale-[0.97] transition-all"
           >
             {redeemState === 'pending' ? (
-              <><Loader2 size={18} className="animate-spin" /> Redeeming…</>
+              <><Loader2 size={18} className="animate-spin" /> Generating QR…</>
             ) : canRedeem ? (
-              <>Redeem 1 Free Drink <span className="opacity-70 text-sm font-normal">· 10 pts</span></>
+              <><QrCode size={18} /> Redeem 1 Free Drink <span className="opacity-70 text-sm font-normal">· 10 pts</span></>
             ) : (
               <>{POINTS_PER_DRINK - customer.total_points} more pts needed</>
             )}
@@ -561,9 +783,9 @@ function MemberView({
         {/* Stats row */}
         <div className="grid grid-cols-3 gap-2">
           {[
-            { label: 'Visits',       value: fmt(customer.visit_count) },
-            { label: 'Spent',        value: thb(customer.total_spending) },
-            { label: 'Free Drinks',  value: fmt(freeDrinks) },
+            { label: 'Visits',      value: fmt(customer.visit_count) },
+            { label: 'Spent',       value: thb(customer.total_spending) },
+            { label: 'Free Drinks', value: fmt(freeDrinks) },
           ].map(s => (
             <div key={s.label} className="rounded-2xl bg-white/10 backdrop-blur border border-white/10 px-2 py-3 text-center">
               <p className="text-[10px] text-white/50 uppercase tracking-wide">{s.label}</p>
@@ -575,12 +797,10 @@ function MemberView({
 
       {/* History panel */}
       <div className="flex-1 bg-[#f8f7f5] rounded-t-3xl overflow-hidden flex flex-col min-h-0">
-
-        {/* Tab bar */}
         <div className="flex border-b border-gray-100 bg-white flex-shrink-0">
           {([
-            { id: 'points',    label: 'Points History', icon: Star },
-            { id: 'purchases', label: 'Purchases',       icon: ShoppingBag },
+            { id: 'points',    label: 'Points History', icon: Star        },
+            { id: 'purchases', label: 'Purchases',      icon: ShoppingBag },
           ] as const).map(t => (
             <button
               key={t.id}
@@ -597,72 +817,73 @@ function MemberView({
           ))}
         </div>
 
-        {/* Scrollable list */}
         <div className="flex-1 overflow-y-auto px-4 py-4 space-y-2.5">
           {tab === 'points' && (
-            txs.length === 0 ? <EmptyState icon={Star} message="No points history yet" /> :
-            txs.map(tx => {
-              const style = TX_STYLE[tx.type] ?? TX_STYLE['adjust']
-              return (
-                <div key={tx.id} className="flex items-center gap-3 rounded-2xl bg-white border border-gray-100 px-4 py-3.5 shadow-sm">
-                  <span className={`flex-shrink-0 rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide ${style.bg} ${style.color}`}>
-                    {style.label}
-                  </span>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs text-gray-700 truncate">{tx.note ?? '—'}</p>
-                    <p className="text-[10px] text-gray-400 mt-0.5">
-                      {new Date(tx.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: '2-digit' })}
-                      {tx.branches && ` · ${tx.branches.name.split(' ')[0]}`}
-                    </p>
-                  </div>
-                  <div className="text-right flex-shrink-0">
-                    <p className={`text-sm font-bold ${tx.points > 0 ? 'text-emerald-600' : 'text-red-500'}`}>
-                      {tx.points > 0 ? '+' : ''}{tx.points}
-                    </p>
-                    <p className="text-[10px] text-gray-400">{fmt(tx.balance_after)} bal</p>
-                  </div>
-                </div>
-              )
-            })
+            txs.length === 0
+              ? <EmptyState icon={Star} message="No points history yet" />
+              : txs.map(tx => {
+                  const style = TX_STYLE[tx.type] ?? TX_STYLE['adjust']
+                  return (
+                    <div key={tx.id} className="flex items-center gap-3 rounded-2xl bg-white border border-gray-100 px-4 py-3.5 shadow-sm">
+                      <span className={`flex-shrink-0 rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide ${style.bg} ${style.color}`}>
+                        {style.label}
+                      </span>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs text-gray-700 truncate">{tx.note ?? '—'}</p>
+                        <p className="text-[10px] text-gray-400 mt-0.5">
+                          {new Date(tx.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: '2-digit' })}
+                          {tx.branches && ` · ${tx.branches.name.split(' ')[0]}`}
+                        </p>
+                      </div>
+                      <div className="text-right flex-shrink-0">
+                        <p className={`text-sm font-bold ${tx.points > 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                          {tx.points > 0 ? '+' : ''}{tx.points}
+                        </p>
+                        <p className="text-[10px] text-gray-400">{fmt(tx.balance_after)} bal</p>
+                      </div>
+                    </div>
+                  )
+                })
           )}
 
           {tab === 'purchases' && (
-            purchases.length === 0 ? <EmptyState icon={ShoppingBag} message="No purchases yet" /> :
-            purchases.map(p => {
-              const items = p.purchase_items ?? []
-              return (
-                <div key={p.id} className="rounded-2xl bg-white border border-gray-100 px-4 py-4 shadow-sm space-y-2">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        {p.branches && (
-                          <span className="rounded-md px-2 py-0.5 text-[9px] font-bold text-white flex-shrink-0"
-                            style={{ background: p.branches.color_hex }}>
-                            {p.branches.name.split(' ')[0]}
-                          </span>
-                        )}
-                        <span className="text-xs text-gray-400">
-                          {new Date(p.purchased_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
-                        </span>
-                      </div>
-                      {items.length > 0 && (
-                        <div className="flex flex-wrap gap-1 mt-1.5">
-                          {items.map((item, i) => (
-                            <span key={i} className="rounded-lg bg-gray-100 px-2 py-0.5 text-[10px] text-gray-600">
-                              {item.name} ×{item.quantity}
+            purchases.length === 0
+              ? <EmptyState icon={ShoppingBag} message="No purchases yet" />
+              : purchases.map(p => {
+                  const items = p.purchase_items ?? []
+                  return (
+                    <div key={p.id} className="rounded-2xl bg-white border border-gray-100 px-4 py-4 shadow-sm space-y-2">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            {p.branches && (
+                              <span className="rounded-md px-2 py-0.5 text-[9px] font-bold text-white flex-shrink-0"
+                                style={{ background: p.branches.color_hex }}>
+                                {p.branches.name.split(' ')[0]}
+                              </span>
+                            )}
+                            <span className="text-xs text-gray-400">
+                              {new Date(p.purchased_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
                             </span>
-                          ))}
+                          </div>
+                          {items.length > 0 && (
+                            <div className="flex flex-wrap gap-1 mt-1.5">
+                              {items.map((item, i) => (
+                                <span key={i} className="rounded-lg bg-gray-100 px-2 py-0.5 text-[10px] text-gray-600">
+                                  {item.name} ×{item.quantity}
+                                </span>
+                              ))}
+                            </div>
+                          )}
                         </div>
-                      )}
+                        <div className="text-right flex-shrink-0">
+                          <p className="text-sm font-bold text-gray-900">{thb(Number(p.total_amount))}</p>
+                          <p className="text-[10px] text-emerald-600">+{p.points_earned ?? 0} pts</p>
+                        </div>
+                      </div>
                     </div>
-                    <div className="text-right flex-shrink-0">
-                      <p className="text-sm font-bold text-gray-900">{thb(Number(p.total_amount))}</p>
-                      <p className="text-[10px] text-emerald-600">+{p.points_earned ?? 0} pts</p>
-                    </div>
-                  </div>
-                </div>
-              )
-            })
+                  )
+                })
           )}
         </div>
       </div>
@@ -695,7 +916,6 @@ export default function MemberPage() {
   const liff = useLiff()
   const [app, setApp] = useState<AppPhase>({ phase: 'loading' })
 
-  // Stable ref so fetchMember can be called from useEffect without being a dep
   const fetchMemberRef = useRef<((p: LiffProfile) => void) | null>(null)
 
   async function fetchMember(profile: LiffProfile) {
@@ -740,7 +960,6 @@ export default function MemberPage() {
 
   useEffect(() => {
     if (liff.status === 'loading' || liff.status === 'unavailable') {
-      // 'unavailable' (no LIFF_ID) keeps the skeleton visible in dev
       setApp({ phase: 'loading' })
       return
     }
@@ -755,7 +974,6 @@ export default function MemberPage() {
       return
     }
 
-    // status === 'ready' — profile is guaranteed non-null here
     if (liff.status === 'ready' && liff.profile) {
       setApp({ phase: 'fetching_customer', profile: liff.profile })
       fetchMemberRef.current?.(liff.profile)
