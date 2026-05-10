@@ -4,12 +4,13 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import {
   User, Mail, ShieldCheck, Store, Users,
-  Info, ExternalLink, Settings,
+  Info, ExternalLink, Settings, AlertTriangle, ArrowLeft,
 } from 'lucide-react'
+import type { Role } from '@/lib/auth'
 
 export const dynamic = 'force-dynamic'
 
-const ROLE_META = {
+const ROLE_META: Record<Role, { label: string; color: string; bg: string }> = {
   admin:   { label: 'Admin',   color: 'text-brand-700',  bg: 'bg-brand-50 border border-brand-200'  },
   manager: { label: 'Manager', color: 'text-blue-700',   bg: 'bg-blue-50  border border-blue-200'   },
   staff:   { label: 'Staff',   color: 'text-gray-600',   bg: 'bg-gray-50  border border-gray-200'   },
@@ -17,15 +18,20 @@ const ROLE_META = {
 
 export default async function SettingsPage() {
   const session = await getCurrentSession()
-  if (!session || !session.profile) redirect('/login')
+  if (!session) redirect('/login')
 
   const { email, profile } = session
+
+  // Derive display values — gracefully handle profile load failure
+  const displayName   = profile?.name  ?? email.split('@')[0]
+  const displayRole   = (profile?.role ?? 'staff') as Role
+  const profileMissing = !profile
 
   const supabase = await createClient()
 
   // Fetch branch name if user is assigned to a branch
   let branchName: string | null = null
-  if (profile.branch_id) {
+  if (profile?.branch_id) {
     const { data } = await supabase
       .from('branches')
       .select('name')
@@ -36,7 +42,7 @@ export default async function SettingsPage() {
 
   // Fetch staff count for admin
   let staffCount: number | null = null
-  if (profile.role === 'admin') {
+  if (displayRole === 'admin') {
     const { count } = await supabase
       .from('staff_profiles')
       .select('id', { count: 'exact', head: true })
@@ -44,13 +50,33 @@ export default async function SettingsPage() {
     staffCount = count
   }
 
-  const rm = ROLE_META[profile.role]
+  const rm = ROLE_META[displayRole]
 
   return (
     <div className="flex flex-1 flex-col overflow-hidden">
       <Topbar title="Settings" subtitle="Account & system configuration" />
 
       <main className="flex-1 overflow-y-auto px-4 sm:px-6 py-5 space-y-5 max-w-2xl">
+
+        {/* Back to Dashboard */}
+        <a
+          href="/dashboard"
+          className="inline-flex items-center gap-1.5 text-[12px] font-medium text-gray-500 hover:text-gray-800 transition-colors"
+        >
+          <ArrowLeft size={13} />
+          Back to Dashboard
+        </a>
+
+        {/* Profile load warning */}
+        {profileMissing && (
+          <div className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
+            <AlertTriangle size={14} className="mt-0.5 flex-shrink-0 text-amber-500" />
+            <p className="text-[12px] text-amber-800 leading-relaxed">
+              Your staff profile could not be loaded. Role and branch shown may not be accurate.
+              Contact an admin to verify your account is set up correctly.
+            </p>
+          </div>
+        )}
 
         {/* ── Profile card ── */}
         <div className="rounded-2xl border border-white/80 bg-white p-6 shadow-[0_1px_3px_rgba(0,0,0,0.05)]">
@@ -62,7 +88,7 @@ export default async function SettingsPage() {
           <div className="flex flex-col sm:flex-row gap-5">
             {/* Avatar */}
             <div className="flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-brand-400 to-brand-600 text-xl font-bold text-white shadow-md">
-              {profile.name.charAt(0).toUpperCase()}
+              {displayName.charAt(0).toUpperCase()}
             </div>
 
             {/* Details */}
@@ -76,7 +102,7 @@ export default async function SettingsPage() {
                   </div>
                   <div>
                     <p className="text-[10px] text-gray-400 mb-0.5">Name</p>
-                    <p className="text-xs font-semibold text-gray-900">{profile.name}</p>
+                    <p className="text-xs font-semibold text-gray-900">{displayName}</p>
                   </div>
                 </div>
 
@@ -124,15 +150,15 @@ export default async function SettingsPage() {
           {/* Role permissions note */}
           <div className="mt-5 rounded-xl bg-gray-50 border border-gray-100 px-4 py-3">
             <p className="text-[11px] text-gray-500 leading-relaxed">
-              {profile.role === 'admin' && 'You have full access — manage staff, branches, and all member data.'}
-              {profile.role === 'manager' && 'You can manage members, points, and view branch reports.'}
-              {profile.role === 'staff' && 'You can scan QR codes, claim points, and process redemptions.'}
+              {displayRole === 'admin'   && 'You have full access — manage staff, branches, and all member data.'}
+              {displayRole === 'manager' && 'You can manage members, points, and view branch reports.'}
+              {displayRole === 'staff'   && 'You can scan QR codes, claim points, and process redemptions.'}
             </p>
           </div>
         </div>
 
         {/* ── Manage Staff (admin only) ── */}
-        {profile.role === 'admin' && (
+        {displayRole === 'admin' && (
           <div className="rounded-2xl border border-white/80 bg-white p-6 shadow-[0_1px_3px_rgba(0,0,0,0.05)]">
             <div className="flex items-center gap-3 mb-4">
               <Users size={14} className="text-gray-400" />

@@ -14,12 +14,29 @@ export interface StaffProfile {
 
 export async function getStaffProfile(userId: string): Promise<StaffProfile | null> {
   const supabase = await createClient()
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from('staff_profiles')
     .select('id, auth_user_id, name, email, role, branch_id, is_active')
     .eq('auth_user_id', userId)
     .single()
-  return data
+
+  if (error) {
+    // PGRST116 = "no rows returned" — row genuinely missing, not a query failure
+    if (error.code === 'PGRST116') {
+      console.warn(
+        `[auth] No staff_profiles row for auth_user_id ${userId}. ` +
+        `Create a row in staff_profiles with auth_user_id = '${userId}' and the correct role.`,
+      )
+    } else {
+      // Real error: likely RLS blocking the query because SUPABASE_SERVICE_ROLE_KEY is missing
+      console.error(
+        `[auth] staff_profiles query failed (code: ${error.code}): ${error.message}. ` +
+        `Ensure SUPABASE_SERVICE_ROLE_KEY is set in .env.local — without it, RLS may block this query.`,
+      )
+    }
+  }
+
+  return data ?? null
 }
 
 export async function getCurrentSession(): Promise<{
