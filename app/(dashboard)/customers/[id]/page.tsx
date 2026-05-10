@@ -14,10 +14,14 @@ export const dynamic = 'force-dynamic'
 
 export default async function CustomerDetailPage({
   params,
+  searchParams,
 }: {
-  params: Promise<{ id: string }>
+  params:       Promise<{ id: string }>
+  searchParams: Promise<Record<string, string>>
 }) {
-  const { id } = await params
+  const { id }    = await params
+  const sp        = await searchParams
+  const debugMode = sp.debug === '1'
 
   console.log('[customer-detail] params.id:', id)
 
@@ -151,6 +155,28 @@ export default async function CustomerDetailPage({
       />
 
       <main className="flex-1 overflow-y-auto px-4 sm:px-6 py-4 sm:py-5 space-y-4 sm:space-y-5">
+
+        {/* ── Debug panel ── */}
+        {debugMode && (
+          <div className="rounded-xl border border-yellow-200 bg-yellow-50 p-4 text-xs font-mono space-y-1.5">
+            <p className="font-bold text-yellow-800 text-[11px] uppercase tracking-wide mb-2">
+              Debug panel — ?debug=1
+            </p>
+            <div><span className="text-yellow-600">params.id: </span><span className="text-yellow-900 break-all">{id}</span></div>
+            <div><span className="text-yellow-600">customer found: </span><span className={customer ? 'text-emerald-700 font-semibold' : 'text-red-700 font-semibold'}>{customer ? 'yes' : 'no'}</span></div>
+            {customerErr && (
+              <div><span className="text-yellow-600">Supabase error: </span><span className="text-red-700">{customerErr.message} (code: {customerErr.code})</span></div>
+            )}
+            {customer && (
+              <>
+                <div><span className="text-yellow-600">customer.id: </span><span className="text-yellow-900 break-all">{customer.id}</span></div>
+                <div><span className="text-yellow-600">customer.name: </span><span className="text-yellow-900">{customer.name}</span></div>
+                <div><span className="text-yellow-600">customer.phone: </span><span className="text-yellow-900">{customer.phone}</span></div>
+                <div><span className="text-yellow-600">customer.is_active: </span><span className="text-yellow-900">{String(customer.is_active)}</span></div>
+              </>
+            )}
+          </div>
+        )}
 
         {/* Back + actions row */}
         <div className="flex flex-wrap items-center justify-between gap-3">

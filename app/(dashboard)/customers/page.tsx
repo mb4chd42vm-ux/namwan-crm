@@ -28,6 +28,7 @@ export default async function CustomersPage({
   const seg          = (params.segment ?? 'all') as Segment | 'all'
   const branchFilter = params.branch ?? null
   const q            = params.q ?? ''
+  const debugMode    = params.debug === '1'
 
   const supabase = await createClient()
 
@@ -227,6 +228,42 @@ export default async function CustomersPage({
             </div>
           )}
         </div>
+
+        {/* ── Debug panel ── */}
+        {debugMode && (
+          <div className="rounded-xl border border-yellow-200 bg-yellow-50 p-4 text-xs font-mono space-y-3">
+            <p className="font-bold text-yellow-800 text-[11px] uppercase tracking-wide">
+              Debug panel — ?debug=1 — {filtered.length} row(s) from Supabase
+            </p>
+            {custErr && (
+              <p className="text-red-700 font-semibold">Supabase error: {custErr.message} (code: {custErr.code})</p>
+            )}
+            <table className="w-full border-collapse text-[11px]">
+              <thead>
+                <tr className="border-b border-yellow-300 text-yellow-700">
+                  <th className="text-left py-1 pr-4 font-semibold">#</th>
+                  <th className="text-left py-1 pr-4 font-semibold">id</th>
+                  <th className="text-left py-1 pr-4 font-semibold">name</th>
+                  <th className="text-left py-1 font-semibold">phone</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.length === 0 ? (
+                  <tr><td colSpan={4} className="py-2 text-yellow-600 italic">No customers returned</td></tr>
+                ) : (
+                  filtered.map((c, i) => (
+                    <tr key={c.id} className="border-b border-yellow-100">
+                      <td className="py-1 pr-4 text-yellow-500">{i + 1}</td>
+                      <td className="py-1 pr-4 text-yellow-900 break-all">{c.id}</td>
+                      <td className="py-1 pr-4 text-yellow-900">{c.name ?? '—'}</td>
+                      <td className="py-1 text-yellow-900">{c.phone ?? '—'}</td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
 
         {/* ── Summary stats ── */}
         {filtered.length > 0 && (
