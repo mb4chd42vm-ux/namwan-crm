@@ -4,9 +4,12 @@ import AddCustomerModal from '@/components/customers/AddCustomerModal'
 import CustomerTableBody from '@/components/customers/CustomerTableBody'
 import Link from 'next/link'
 import { Suspense } from 'react'
-import { Phone, Star, Users, ChevronRight, AlertCircle } from 'lucide-react'
+import { Users, AlertCircle } from 'lucide-react'
 import { SEGMENT_META, thb, pts, fmt, type Segment } from '@/data/mock'
 import { createClient } from '@/lib/supabase/server'
+
+// Always fetch fresh — prevents stale cache from showing deleted/outdated rows
+export const dynamic = 'force-dynamic'
 
 const TABS: { value: string; label: string }[] = [
   { value: 'all',       label: 'All' },
@@ -63,14 +66,21 @@ export default async function CustomersPage({
     countsQ,
   ])
 
-  // Log any Supabase errors for debugging (warn avoids Next.js error overlay)
-  if (branchErr) console.warn('[customers] branches error:', branchErr)
-  if (custErr)   console.warn('[customers] customers error:', custErr)
-  if (countErr)  console.warn('[customers] counts error:',   countErr)
+  // Log Supabase errors and customer counts — never use mock data as fallback
+  if (branchErr) console.error('[customers] branches query error:', branchErr)
+  if (custErr)   console.error('[customers] customers query error:', custErr)
+  if (countErr)  console.error('[customers] counts query error:',   countErr)
 
-  const hasError   = !!(custErr || countErr)
-  const allCounts  = allForCounts ?? []
-  const filtered   = customers    ?? []
+  // NOTE: no fallback to mock/CUSTOMERS — always real Supabase data only
+  const allCounts = allForCounts ?? []
+  const filtered  = customers    ?? []
+
+  console.log(`[customers] loaded ${filtered.length} customers from Supabase (mock: 0)`)
+  if (filtered.length === 0 && !custErr) {
+    console.log('[customers] Supabase returned 0 customers — showing empty state')
+  }
+
+  const hasError = !!(custErr || countErr)
 
   const segCounts = Object.fromEntries(
     ['all', 'vip', 'returning', 'new', 'inactive'].map(s => [
@@ -166,15 +176,22 @@ export default async function CustomersPage({
             <div className="flex flex-col items-center justify-center py-16 gap-3">
               <Users size={32} className="text-gray-200" />
               <div className="text-center">
-                <p className="text-sm font-medium text-gray-400">No customers found</p>
+                <p className="text-sm font-medium text-gray-400">
+                  {hasError ? 'Could not load customers' : 'No customers yet'}
+                </p>
                 <p className="text-xs text-gray-300 mt-0.5">
                   {hasError
-                    ? 'Database connection error — check credentials'
+                    ? 'Database connection error — check Supabase credentials'
                     : q
                     ? `No results for "${q}" — try a different search`
+                    : seg !== 'all'
+                    ? `No ${seg} customers${branchFilter ? ' at this branch' : ''}`
                     : 'Add your first customer using the button above'}
                 </p>
               </div>
+              {!hasError && !q && seg === 'all' && (
+                <AddCustomerModal />
+              )}
             </div>
           ) : (
             <div className="overflow-x-auto">

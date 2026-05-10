@@ -30,7 +30,11 @@ export async function addCustomer(formData: FormData) {
 
   let result
   try {
-    result = await supabase.from('customers').insert({ name, phone, line_id, birthday, notes })
+    result = await supabase
+      .from('customers')
+      .insert({ name, phone, line_id, birthday, notes })
+      .select('id')
+      .single()
   } catch (e: unknown) {
     // Supabase JS throws TypeError: fetch failed when the URL is unreachable
     const msg = e instanceof Error ? e.message : String(e)
@@ -44,12 +48,15 @@ export async function addCustomer(formData: FormData) {
   }
 
   if (result.error) {
-    console.warn('[addCustomer] Supabase error:', result.error)
+    console.error('[addCustomer] Supabase error:', result.error)
     if (result.error.code === '23505') {
       throw new Error('A customer with this phone number already exists')
     }
     throw new Error(result.error.message)
   }
 
+  console.log('[addCustomer] created customer id:', result.data?.id)
+
   revalidatePath('/customers')
+  revalidatePath('/dashboard')
 }
