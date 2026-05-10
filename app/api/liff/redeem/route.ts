@@ -8,17 +8,23 @@ function adminClient() {
   )
 }
 
-const POINTS_PER_DRINK = 10
+const POINTS_PER_DRINK   = 10
+const LINE_BRANCH_NAME   = 'LINE Member'
 
 /**
  * POST /api/liff/redeem
  *
  * Redeems exactly 1 free drink (10 points) for a customer identified by line_id.
+ * Branch resolution order:
+ *   1. branch_id from request body
+ *   2. customer's home_branch_id
+ *   3. "LINE Member" branch (upserted on first use)
+ *   4. first active branch (last resort)
  *
  * Body: { line_id: string, branch_id?: string }
  *
  * Response:
- *   { success: true, new_balance: number }
+ *   { success: true, new_balance: number, redeemed_at: string }
  *   { error: string }
  */
 export async function POST(req: NextRequest) {
@@ -57,22 +63,62 @@ export async function POST(req: NextRequest) {
     )
   }
 
-  // Use provided branch_id or fall back to home_branch_id
-  const effectiveBranchId = branch_id || customer.home_branch_id
+  // 2. Resolve branch — never fail on missing branch
+  let effectiveBranchId: string | null = branch_id || customer.home_branch_id || null
+
   if (!effectiveBranchId) {
-    return NextResponse.json(
-      { error: 'No branch available — please contact staff to redeem' },
-      { status: 400 },
-    )
+    // Try the dedicated LINE Member branch
+    const { data: lineBranch } = await db
+      .from('branches')
+      .select('id')
+      .eq('name', LINE_BRANCH_NAME)
+      .single()
+
+    if (lineBranch) {
+      effectiveBranchId = lineBranch.id
+    } else {
+      // Last resort: upsert the LINE Member branch so future redeems always find it
+      const { data: inserted } = await db
+        .from('branches')
+        .insert({
+          name:       LINE_BRANCH_NAME,
+          location:   'Online redemption',
+          color_hex:  '#06C755',
+          is_active:  true,
+          sort_order: 999,
+        })
+        .select('id')
+        .single()
+
+      if (inserted) {
+        effectiveBranchId = inserted.id
+      } else {
+        // Absolute last resort
+        const { data: anyBranch } = await db
+          .from('branches')
+          .select('id')
+          .eq('is_active', true)
+          .order('sort_order')
+          .limit(1)
+          .single()
+        effectiveBranchId = anyBranch?.id ?? null
+      }
+    }
   }
 
-  // 2. Deduct via RPC
+  if (!effectiveBranchId) {
+    return NextResponse.json({ error: 'No branch configured — please contact staff' }, { status: 500 })
+  }
+
+  // 3. Deduct via RPC
+  const redeemed_at = new Date().toISOString()
+
   const { error: rpcErr } = await db.rpc('adjust_points', {
     p_customer_id:  customer.id,
     p_branch_id:    effectiveBranchId,
     p_type:         'redeem',
     p_points:       POINTS_PER_DRINK,
-    p_note:         'Redeemed 1 free drink',
+    p_note:         'Redeemed 1 free drink via LINE Member',
     p_performed_by: null,
   })
 
@@ -80,7 +126,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: rpcErr.message }, { status: 500 })
   }
 
-  // 3. Return refreshed balance
+  // 4. Return refreshed balance
   const { data: updated } = await db
     .from('customers')
     .select('total_points')
@@ -89,5 +135,5 @@ export async function POST(req: NextRequest) {
 
   const new_balance = updated?.total_points ?? Math.max(0, (customer.total_points ?? 0) - POINTS_PER_DRINK)
 
-  return NextResponse.json({ success: true, new_balance })
+  return NextResponse.json({ success: true, new_balance, redeemed_at })
 }

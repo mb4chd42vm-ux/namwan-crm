@@ -360,9 +360,10 @@ function MemberView({
   const [txs,      setTxs]      = useState(initialTxs)
 
   // Redeem flow
-  const [redeemState, setRedeemState] = useState<'idle' | 'pending' | 'success' | 'error'>('idle')
-  const [redeemError, setRedeemError] = useState<string | null>(null)
-  const [newBalance,  setNewBalance]  = useState<number | null>(null)
+  const [redeemState,     setRedeemState]     = useState<'idle' | 'pending' | 'success' | 'error'>('idle')
+  const [redeemError,     setRedeemError]     = useState<string | null>(null)
+  const [newBalance,      setNewBalance]      = useState<number | null>(null)
+  const [redeemTimestamp, setRedeemTimestamp] = useState<string | null>(null)
 
   const canRedeem = customer.total_points >= POINTS_PER_DRINK
 
@@ -373,10 +374,7 @@ function MemberView({
       const res  = await fetch('/api/liff/redeem', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({
-          line_id:   customer.line_id,
-          branch_id: customer.home_branch_id ?? undefined,
-        }),
+        body:    JSON.stringify({ line_id: customer.line_id }),
       })
       const data = await res.json()
       if (!res.ok) {
@@ -384,16 +382,17 @@ function MemberView({
         setRedeemError(data.error ?? 'Redemption failed')
         return
       }
+      const ts = data.redeemed_at ?? new Date().toISOString()
       setNewBalance(data.new_balance)
+      setRedeemTimestamp(ts)
       setCustomer(c => ({ ...c, total_points: data.new_balance }))
-      // Prepend synthetic tx so history updates immediately
       setTxs(prev => [{
         id:            `local-${Date.now()}`,
         type:          'redeem',
         points:        -POINTS_PER_DRINK,
         balance_after: data.new_balance,
-        note:          'Redeemed 1 free drink',
-        created_at:    new Date().toISOString(),
+        note:          'Redeemed 1 free drink via LINE Member',
+        created_at:    ts,
         branches:      null,
       }, ...prev])
       setRedeemState('success')
@@ -407,6 +406,78 @@ function MemberView({
   const drinksToFree = Math.max(0, 10 - (customer.total_points % 10))
   const freeDrinks   = Math.floor(customer.total_points / 10)
   const seg          = SEGMENT_INFO[customer.segment] ?? SEGMENT_INFO['new']
+
+  // ── Redeem success — full-screen receipt view ────────────────────────────────
+  if (redeemState === 'success' && redeemTimestamp !== null && newBalance !== null) {
+    const ts  = new Date(redeemTimestamp)
+    const day = ts.toLocaleDateString('en-GB', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' })
+    const time = ts.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
+    return (
+      <Shell>
+        <AppHeader />
+        <div className="flex-1 flex flex-col items-center justify-center px-5 pb-10 gap-6">
+
+          {/* Animated check */}
+          <div className="flex h-20 w-20 items-center justify-center rounded-full bg-emerald-400/20 border-2 border-emerald-300/40">
+            <CheckCircle size={44} className="text-emerald-300" />
+          </div>
+
+          {/* Voucher card */}
+          <div className="w-full rounded-3xl bg-white overflow-hidden shadow-2xl">
+            {/* Green header strip */}
+            <div className="bg-emerald-500 px-6 py-4 text-center">
+              <p className="text-xs font-bold text-emerald-100 uppercase tracking-widest">Redeemed</p>
+              <p className="text-3xl font-black text-white mt-0.5">1 Free Drink</p>
+            </div>
+
+            {/* Dashed divider */}
+            <div className="relative flex items-center px-4">
+              <div className="absolute -left-3 h-6 w-6 rounded-full bg-brand-800" />
+              <div className="flex-1 border-t-2 border-dashed border-gray-200 my-0" />
+              <div className="absolute -right-3 h-6 w-6 rounded-full bg-brand-800" />
+            </div>
+
+            {/* Receipt body */}
+            <div className="px-6 py-5 space-y-3">
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-400">Member</span>
+                <span className="font-semibold text-gray-900">{customer.name}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-400">Date</span>
+                <span className="font-semibold text-gray-900">{day}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-400">Time</span>
+                <span className="font-semibold text-gray-900">{time}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-400">Points used</span>
+                <span className="font-bold text-red-500">−{POINTS_PER_DRINK} pts</span>
+              </div>
+              <div className="flex justify-between text-sm border-t border-dashed border-gray-200 pt-3 mt-1">
+                <span className="font-semibold text-gray-700">Remaining balance</span>
+                <span className="font-black text-gray-900">{newBalance} pts</span>
+              </div>
+            </div>
+
+            {/* Footer instruction */}
+            <div className="mx-5 mb-5 rounded-2xl bg-amber-50 border border-amber-100 px-4 py-3 text-center">
+              <p className="text-xs font-bold text-amber-700">Show this screen to staff at any branch</p>
+              <p className="text-[10px] text-amber-600 mt-0.5">Valid at the time shown above</p>
+            </div>
+          </div>
+
+          <button
+            onClick={() => setRedeemState('idle')}
+            className="w-full rounded-2xl bg-white/10 py-3.5 text-sm font-semibold text-white/70 hover:bg-white/15 transition-colors"
+          >
+            Back to my card
+          </button>
+        </div>
+      </Shell>
+    )
+  }
 
   return (
     <Shell>
@@ -468,34 +539,24 @@ function MemberView({
         </div>
 
         {/* Redeem button */}
-        {redeemState === 'success' ? (
-          <div className="flex items-center gap-3 rounded-2xl bg-emerald-500/20 border border-emerald-400/30 px-4 py-4">
-            <CheckCircle size={20} className="text-emerald-300 flex-shrink-0" />
-            <div>
-              <p className="text-sm font-bold text-white">1 free drink redeemed!</p>
-              <p className="text-xs text-white/60 mt-0.5">New balance: {newBalance} pts</p>
-            </div>
-          </div>
-        ) : (
-          <div className="space-y-2">
-            <button
-              onClick={handleRedeem}
-              disabled={!canRedeem || redeemState === 'pending'}
-              className="w-full h-14 rounded-2xl bg-amber-300 text-amber-900 font-bold text-base flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed active:scale-[0.97] transition-all"
-            >
-              {redeemState === 'pending' ? (
-                <><Loader2 size={18} className="animate-spin" /> Redeeming…</>
-              ) : canRedeem ? (
-                <>Redeem 1 Free Drink <span className="opacity-70 text-sm font-normal">· 10 pts</span></>
-              ) : (
-                <>{POINTS_PER_DRINK - customer.total_points} more pts needed</>
-              )}
-            </button>
-            {redeemState === 'error' && redeemError && (
-              <p className="text-xs text-red-300 text-center">{redeemError}</p>
+        <div className="space-y-2">
+          <button
+            onClick={handleRedeem}
+            disabled={!canRedeem || redeemState === 'pending'}
+            className="w-full h-14 rounded-2xl bg-amber-300 text-amber-900 font-bold text-base flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed active:scale-[0.97] transition-all"
+          >
+            {redeemState === 'pending' ? (
+              <><Loader2 size={18} className="animate-spin" /> Redeeming…</>
+            ) : canRedeem ? (
+              <>Redeem 1 Free Drink <span className="opacity-70 text-sm font-normal">· 10 pts</span></>
+            ) : (
+              <>{POINTS_PER_DRINK - customer.total_points} more pts needed</>
             )}
-          </div>
-        )}
+          </button>
+          {redeemState === 'error' && redeemError && (
+            <p className="text-xs text-red-300 text-center">{redeemError}</p>
+          )}
+        </div>
 
         {/* Stats row */}
         <div className="grid grid-cols-3 gap-2">
