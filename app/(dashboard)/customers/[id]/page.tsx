@@ -3,7 +3,8 @@ import Link from 'next/link'
 import {
   ArrowLeft, Phone, Calendar, Star, ShoppingBag,
   Hash, Clock, Cake, MessageSquare, TrendingUp,
-  Pencil, Store, AlertTriangle,
+  Pencil, Store, AlertTriangle, MapPin, Globe,
+  User, Bell, BellOff, Heart,
 } from 'lucide-react'
 import RedeemPointsModal from '@/components/points/RedeemPointsModal'
 import { SEGMENT_META, TX_META, thb, pts, fmt, type Segment, type TxType } from '@/data/mock'
@@ -109,8 +110,24 @@ export default async function CustomerDetailPage({
     )
   }
 
-  // Resolve home branch from the branches list (no embed needed)
-  const homeBranch = (branches ?? []).find(b => b.id === customer.home_branch_id) ?? null
+  // Resolve branches from the branches list (no embed needed — avoids PGRST201)
+  const homeBranch  = (branches ?? []).find(b => b.id === customer.home_branch_id)  ?? null
+  const favBranch   = (branches ?? []).find(b => b.id === customer.favorite_branch_id) ?? null
+
+  const DISCOVERED_LABELS: Record<string, string> = {
+    social_media: 'Social Media',
+    friend:       'Friend Referral',
+    walk_in:      'Walk-in',
+    other:        'Other',
+  }
+  const GENDER_LABELS: Record<string, string> = {
+    male:              'Male',
+    female:            'Female',
+    non_binary:        'Non-binary',
+    prefer_not_to_say: 'Prefer not to say',
+    other:             'Other',
+  }
+
   const segment     = customer.segment as Segment
   const m           = SEGMENT_META[segment]
   const allPurchases = purchases ?? []
@@ -323,6 +340,139 @@ export default async function CustomerDetailPage({
               <p className={`text-base font-bold ${s.color}`}>{s.value}</p>
             </div>
           ))}
+        </div>
+
+        {/* ── Profile Information ── */}
+        <div className="rounded-2xl border border-white/80 bg-white p-5 shadow-[0_1px_3px_rgba(0,0,0,0.05)]">
+          <p className="mb-4 text-[13px] font-semibold text-gray-900">Profile Information</p>
+          <div className="grid grid-cols-1 gap-y-3 sm:grid-cols-2 sm:gap-x-8 sm:gap-y-3.5">
+            {/* Phone */}
+            <div className="flex items-start gap-2.5">
+              <div className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-lg bg-gray-100">
+                <Phone size={11} className="text-gray-500" />
+              </div>
+              <div>
+                <p className="text-[10px] text-gray-400 mb-0.5">Phone</p>
+                <p className="text-xs font-medium text-gray-900">{customer.phone || '—'}</p>
+              </div>
+            </div>
+
+            {/* Birthday */}
+            <div className="flex items-start gap-2.5">
+              <div className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-lg bg-pink-50">
+                <Cake size={11} className="text-pink-500" />
+              </div>
+              <div>
+                <p className="text-[10px] text-gray-400 mb-0.5">Birthday</p>
+                <p className="text-xs font-medium text-gray-900">{birthdayStr ?? '—'}</p>
+              </div>
+            </div>
+
+            {/* Gender */}
+            <div className="flex items-start gap-2.5">
+              <div className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-lg bg-blue-50">
+                <User size={11} className="text-blue-500" />
+              </div>
+              <div>
+                <p className="text-[10px] text-gray-400 mb-0.5">Gender</p>
+                <p className="text-xs font-medium text-gray-900">
+                  {customer.gender ? (GENDER_LABELS[customer.gender] ?? customer.gender) : '—'}
+                </p>
+              </div>
+            </div>
+
+            {/* Area / Province */}
+            <div className="flex items-start gap-2.5">
+              <div className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-lg bg-emerald-50">
+                <MapPin size={11} className="text-emerald-500" />
+              </div>
+              <div>
+                <p className="text-[10px] text-gray-400 mb-0.5">Area / Province</p>
+                <p className="text-xs font-medium text-gray-900">{customer.area_or_province || '—'}</p>
+              </div>
+            </div>
+
+            {/* Region */}
+            <div className="flex items-start gap-2.5">
+              <div className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-lg bg-teal-50">
+                <Globe size={11} className="text-teal-500" />
+              </div>
+              <div>
+                <p className="text-[10px] text-gray-400 mb-0.5">Region</p>
+                <p className="text-xs font-medium text-gray-900">{customer.region || '—'}</p>
+              </div>
+            </div>
+
+            {/* Favorite Branch */}
+            <div className="flex items-start gap-2.5">
+              <div className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-lg bg-red-50">
+                <Heart size={11} className="text-red-500" />
+              </div>
+              <div>
+                <p className="text-[10px] text-gray-400 mb-0.5">Favorite Branch</p>
+                {favBranch ? (
+                  <span className="inline-flex items-center gap-1.5 text-xs font-medium text-gray-900">
+                    <span className="h-2 w-2 rounded-full flex-shrink-0" style={{ background: favBranch.color_hex }} />
+                    {favBranch.name}
+                  </span>
+                ) : (
+                  <p className="text-xs font-medium text-gray-900">—</p>
+                )}
+              </div>
+            </div>
+
+            {/* Discovered from */}
+            <div className="flex items-start gap-2.5">
+              <div className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-lg bg-purple-50">
+                <Star size={11} className="text-purple-500" />
+              </div>
+              <div>
+                <p className="text-[10px] text-gray-400 mb-0.5">How they found us</p>
+                <p className="text-xs font-medium text-gray-900">
+                  {customer.discovered_from
+                    ? (DISCOVERED_LABELS[customer.discovered_from] ?? customer.discovered_from)
+                    : '—'}
+                </p>
+              </div>
+            </div>
+
+            {/* Marketing consent */}
+            <div className="flex items-start gap-2.5">
+              <div className={`flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-lg ${customer.marketing_consent ? 'bg-green-50' : 'bg-gray-100'}`}>
+                {customer.marketing_consent
+                  ? <Bell size={11} className="text-green-500" />
+                  : <BellOff size={11} className="text-gray-400" />
+                }
+              </div>
+              <div>
+                <p className="text-[10px] text-gray-400 mb-0.5">Marketing</p>
+                {customer.marketing_consent === null || customer.marketing_consent === undefined ? (
+                  <p className="text-xs font-medium text-gray-900">—</p>
+                ) : customer.marketing_consent ? (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-green-50 px-2 py-0.5 text-[10px] font-semibold text-green-700">
+                    Opted in
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-semibold text-gray-500">
+                    Opted out
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* LINE ID */}
+            <div className="flex items-start gap-2.5 sm:col-span-2">
+              <div className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-lg bg-green-50">
+                <MessageSquare size={11} className="text-green-600" />
+              </div>
+              <div>
+                <p className="text-[10px] text-gray-400 mb-0.5">LINE User ID</p>
+                <p className="text-xs font-medium text-gray-900 font-mono break-all">
+                  {customer.line_id || '—'}
+                </p>
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* ── Branch Breakdown ── */}

@@ -2,6 +2,7 @@ import Topbar from '@/components/layout/Topbar'
 import CustomerSearch from '@/components/customers/CustomerSearch'
 import AddCustomerModal from '@/components/customers/AddCustomerModal'
 import CustomerTableBody from '@/components/customers/CustomerTableBody'
+import ExportMembersButton from '@/components/customers/ExportMembersButton'
 import Link from 'next/link'
 import { Suspense } from 'react'
 import { Users, AlertCircle } from 'lucide-react'
@@ -152,12 +153,13 @@ export default async function CustomersPage({
             ))}
           </div>
 
-          {/* Search + Add */}
+          {/* Search + Add + Export */}
           <div className="flex items-center gap-2 sm:ml-auto">
             <Suspense fallback={<div className="h-9 flex-1 rounded-xl bg-gray-100 animate-pulse" />}>
               <CustomerSearch defaultValue={q} />
             </Suspense>
             <AddCustomerModal />
+            <ExportMembersButton />
           </div>
         </div>
 
