@@ -2,18 +2,18 @@
 @import "tailwindcss";
 
 @theme {
-  /* ── Bakery Red — warm pomegranate brand ────────────────────────────── */
-  --color-brand-50:  #FDF3F1;
-  --color-brand-100: #FAE7E3;
-  --color-brand-200: #F4C8BF;
-  --color-brand-300: #EBA08F;
-  --color-brand-400: #DE7358;
-  --color-brand-500: #C85038;
-  --color-brand-600: #A83520;   /* ← PRIMARY CTA – bakery red          */
-  --color-brand-700: #8A2418;
-  --color-brand-800: #671A11;
-  --color-brand-900: #44100B;
-  --color-brand-950: #250806;
+  /* ── Brand Red — bright tomato / Namwan energetic red ───────────────── */
+  --color-brand-50:  #FFF3EF;
+  --color-brand-100: #FFE4DA;
+  --color-brand-200: #FFBFAA;
+  --color-brand-300: #FF9275;
+  --color-brand-400: #FF6040;
+  --color-brand-500: #FF4020;
+  --color-brand-600: #FF2B00;   /* ← PRIMARY CTA – Namwan tomato red     */
+  --color-brand-700: #D42300;
+  --color-brand-800: #A81C00;
+  --color-brand-900: #751500;
+  --color-brand-950: #420C00;
 
   /* ── Cocoa Brown — rich typographic depth ───────────────────────────── */
   --color-cocoa-50:  #FBF7F4;
@@ -25,23 +25,23 @@
   --color-cocoa-600: #7A5538;
   --color-cocoa-700: #5E3D26;
   --color-cocoa-800: #3D2718;
-  --color-cocoa-900: #1E130C;
-  --color-cocoa-950: #0F0906;
+  --color-cocoa-900: #2A1800;
+  --color-cocoa-950: #150C00;
 
-  /* ── Cream — warm bakery backgrounds ───────────────────────────────── */
-  --color-cream-50:  #FEFDFB;
-  --color-cream-100: #FAF8F4;
-  --color-cream-200: #F3EEE5;
-  --color-cream-300: #E8DFCF;
-  --color-cream-400: #D9CDB8;
-  --color-cream-500: #C5B49C;
-  --color-cream-600: #AA967A;
+  /* ── Cream — warm golden bakery canvas ─────────────────────────────── */
+  --color-cream-50:  #FFFEF6;
+  --color-cream-100: #FFECC7;   /* ← main background – warm golden cream  */
+  --color-cream-200: #FFD98A;
+  --color-cream-300: #FFC557;
+  --color-cream-400: #FFAA26;
+  --color-cream-500: #E88B00;
+  --color-cream-600: #C07000;
 
-  /* ── Sand — warm accent neutral ─────────────────────────────────────── */
-  --color-sand-100: #F5EDE0;
-  --color-sand-200: #EADAC0;
-  --color-sand-300: #D9BF98;
-  --color-sand-400: #C4A070;
+  /* ── Sand — warm amber accent ────────────────────────────────────────── */
+  --color-sand-100: #FFE8A0;
+  --color-sand-200: #FFD468;
+  --color-sand-300: #FFBF38;
+  --color-sand-400: #F0A010;
 
   --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
 }
@@ -56,31 +56,31 @@ html {
 }
 
 body {
-  background: #FAF8F4;
-  color: #1A0C06;
+  background: #FFECC7;
+  color: #2A1800;
   font-family: var(--font-sans);
 }
 
-/* Premium micro-scrollbar */
+/* Warm micro-scrollbar */
 ::-webkit-scrollbar        { width: 3px; height: 3px; }
 ::-webkit-scrollbar-track  { background: transparent; }
-::-webkit-scrollbar-thumb  { border-radius: 9999px; background: #D9CDB8; }
-::-webkit-scrollbar-thumb:hover { background: #C5B49C; }
+::-webkit-scrollbar-thumb  { border-radius: 9999px; background: #FFD98A; }
+::-webkit-scrollbar-thumb:hover { background: #FFC557; }
 
 /* Glassmorphism — warm-tinted */
 .glass {
-  background: rgba(250, 248, 244, 0.75);
+  background: rgba(255, 236, 199, 0.75);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
 }
 
-/* Premium shimmer — cream palette */
+/* Playful shimmer — golden cream palette */
 @keyframes shimmer {
   0%   { background-position: -200% 0; }
   100% { background-position:  200% 0; }
 }
 .shimmer {
-  background: linear-gradient(90deg, #F3EEE5 0%, #FAF8F4 50%, #F3EEE5 100%);
+  background: linear-gradient(90deg, #FFD98A 0%, #FFECC7 50%, #FFD98A 100%);
   background-size: 200% 100%;
   animation: shimmer 1.8s ease-in-out infinite;
 }

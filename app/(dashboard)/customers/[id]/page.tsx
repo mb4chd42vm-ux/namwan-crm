@@ -411,13 +411,13 @@ export default async function CustomerDetailPage({
               </div>
             </div>
 
-            {/* Favorite Branch */}
+            {/* Most Visit Branch */}
             <div className="flex items-start gap-2.5">
-              <div className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-lg bg-red-50">
-                <Heart size={11} className="text-red-500" />
+              <div className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-lg bg-brand-50">
+                <Heart size={11} className="text-brand-500" />
               </div>
               <div>
-                <p className="text-[10px] text-gray-400 mb-0.5">Favorite Branch</p>
+                <p className="text-[10px] text-gray-400 mb-0.5">{t.memberDetail.fields.favoriteBranch}</p>
                 {favBranch ? (
                   <span className="inline-flex items-center gap-1.5 text-xs font-medium text-gray-900">
                     <span className="h-2 w-2 rounded-full flex-shrink-0" style={{ background: favBranch.color_hex }} />

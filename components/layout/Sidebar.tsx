@@ -79,10 +79,13 @@ export default function Sidebar({ user }: { user: SidebarUser }) {
 
         {/* ── Logo ── */}
         <div className="flex items-center gap-3 px-6 py-6 border-b border-cream-300">
-          <div className="relative flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl bg-brand-700 shadow-md shadow-brand-900/30">
-            <svg viewBox="0 0 24 24" className="w-5 h-5 text-white fill-current">
-              <path d="M3.5 18.5L7 14l4 2-1.5 4H3.5zm17-13L17 9.5l-2-4 1.5-4.5 4 4.5zM12 13l-5-2.5 7.5-7.5L17 8 12 13z"/>
-            </svg>
+          <div className="relative flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl overflow-hidden shadow-md"
+            style={{ background: '#FF2B00' }}>
+            <img
+              src="/logo/namwan-logo.png"
+              alt="Namwan"
+              className="w-full h-full object-cover"
+            />
           </div>
           <div className="min-w-0 flex-1">
             <p className="text-[13px] font-bold text-cocoa-900 leading-none tracking-tight">Namwan Loyalty</p>

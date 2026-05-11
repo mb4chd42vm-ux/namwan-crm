@@ -37,9 +37,9 @@ export interface MonthlyStat { month: string; bakery: number; brunch: number; ca
 // ─── Branches ─────────────────────────────────────────────────────────────────
 
 export const BRANCHES: Branch[] = [
-  { id: 'b1', name: 'Namwan Muengthongthani',             location: 'Muengthongthani, Nonthaburi', color: '#c45f12', accent: '#fdf6ee' },
-  { id: 'b2', name: 'Namwan Petchkasem',                  location: 'Petchkasem Road, Bangkok',    color: '#0f766e', accent: '#f0fdfa' },
-  { id: 'b3', name: 'Namwan Bake Beforebrunch (Suan Phak)', location: 'Suan Phak, Bangkok',        color: '#7c3aed', accent: '#f5f3ff' },
+  { id: 'b1', name: 'Namwan bakehouse (Meungthong HQ)',                      location: 'Muengthongthani, Nonthaburi',           color: '#FF2B00', accent: '#FFF3EF' },
+  { id: 'b2', name: 'Namwan bakehouse (Bang khae-Petch kasem)',               location: 'Bang Khae, Petchkasem Road, Bangkok',  color: '#D42300', accent: '#FFE4DA' },
+  { id: 'b3', name: 'NamwanBake Before Brunch (Kanchanapisek - Suan phak)', location: 'Kanchanapisek Road, Suan Phak, Bangkok', color: '#A81C00', accent: '#FFBFAA' },
 ]
 
 // ─── Customers ────────────────────────────────────────────────────────────────

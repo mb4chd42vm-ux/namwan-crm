@@ -79,7 +79,7 @@ export async function GET(request: NextRequest) {
       'gender',
       'area_or_province',
       'region',
-      'favorite_branch',
+      'most_visit_branch',
       'discovered_from',
       'segment',
       'marketing_consent',

@@ -1,0 +1,23 @@
+{
+  "name": "Namwan Loyalty",
+  "short_name": "Namwan",
+  "description": "Namwan multi-branch loyalty membership system",
+  "start_url": "/member",
+  "display": "standalone",
+  "background_color": "#FF2B00",
+  "theme_color": "#FF2B00",
+  "icons": [
+    {
+      "src": "/logo/namwan-logo.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/logo/namwan-logo-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

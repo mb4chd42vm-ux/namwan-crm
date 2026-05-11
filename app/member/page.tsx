@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, useTransition } from 'react'
 import {
   Star, Coffee, Gift, Phone, Loader2, AlertTriangle,
   ShoppingBag, CheckCircle, QrCode, Clock,
-  User, MapPin, Heart, Megaphone, Wheat, Sparkles,
+  User, MapPin, Heart, Megaphone, Sparkles,
 } from 'lucide-react'
 import { useLiff, type LiffProfile } from '@/hooks/useLiff'
 import ProvinceSelector, { type LocationValue } from '@/components/location/ProvinceSelector'
@@ -86,8 +86,8 @@ function thb(n: number) { return `฿${Math.round(n).toLocaleString()}` }
 
 function Shell({ children }: { children: React.ReactNode }) {
   return (
-    <div className="min-h-screen bg-brand-900 flex flex-col"
-      style={{ background: 'linear-gradient(160deg, #44100B 0%, #6A1810 40%, #8A2418 100%)' }}>
+    <div className="min-h-screen flex flex-col"
+      style={{ background: 'linear-gradient(160deg, #FF2B00 0%, #D42300 45%, #A81C00 100%)' }}>
       {children}
     </div>
   )
@@ -96,8 +96,8 @@ function Shell({ children }: { children: React.ReactNode }) {
 function AppHeader() {
   return (
     <div className="flex items-center gap-3 px-5 pt-14 pb-5 flex-shrink-0">
-      <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/15">
-        <Wheat size={18} className="text-sand-300 fill-sand-300/40" />
+      <div className="flex h-10 w-10 items-center justify-center rounded-2xl overflow-hidden bg-white/15">
+        <img src="/logo/namwan-logo.png" alt="Namwan" className="w-full h-full object-cover" />
       </div>
       <div className="flex-1">
         <p className="text-[15px] font-bold text-white leading-none tracking-tight">Namwan</p>
@@ -152,8 +152,8 @@ function OpenInLineView({
   return (
     <Shell>
       <div className="flex-1 flex flex-col items-center justify-center px-7 text-center gap-8">
-        <div className="flex h-20 w-20 items-center justify-center rounded-3xl bg-white/12 border border-white/15">
-          <Wheat size={36} className="text-sand-300" />
+        <div className="flex h-20 w-20 items-center justify-center rounded-3xl overflow-hidden bg-white/12 border border-white/15">
+          <img src="/logo/namwan-logo.png" alt="Namwan" className="w-full h-full object-cover" />
         </div>
         <div className="space-y-3">
           <p className="text-3xl font-bold text-white tracking-tight">Namwan</p>

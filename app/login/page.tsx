@@ -12,44 +12,44 @@ export default async function LoginPage({
     <div className="flex min-h-screen">
 
       {/* ── Left brand panel ── */}
-      <div className="hidden lg:flex lg:w-5/12 xl:w-[46%] flex-col justify-between bg-brand-800 p-12 relative overflow-hidden">
+      <div className="hidden lg:flex lg:w-5/12 xl:w-[46%] flex-col justify-between p-12 relative overflow-hidden"
+        style={{ background: '#FF2B00' }}>
 
-        {/* Subtle texture overlay */}
-        <div className="absolute inset-0 opacity-[0.03]"
+        {/* Subtle dot texture */}
+        <div className="absolute inset-0 opacity-[0.06]"
           style={{
             backgroundImage: `radial-gradient(circle at 2px 2px, white 1px, transparent 0)`,
-            backgroundSize: '32px 32px',
+            backgroundSize: '28px 28px',
           }}
         />
 
-        {/* Top warm gradient blob */}
-        <div className="absolute -top-32 -right-32 w-96 h-96 rounded-full bg-brand-600/30 blur-3xl" />
-        <div className="absolute -bottom-20 -left-20 w-72 h-72 rounded-full bg-brand-900/50 blur-3xl" />
+        {/* Warm glow blobs */}
+        <div className="absolute -top-32 -right-32 w-96 h-96 rounded-full blur-3xl" style={{ background: 'rgba(255,255,255,0.08)' }} />
+        <div className="absolute -bottom-20 -left-20 w-72 h-72 rounded-full blur-3xl" style={{ background: 'rgba(0,0,0,0.12)' }} />
 
         <div className="relative">
           {/* Logo */}
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/15">
-              <svg viewBox="0 0 24 24" className="w-5 h-5 fill-white">
-                <path d="M3.5 18.5L7 14l4 2-1.5 4H3.5zm17-13L17 9.5l-2-4 1.5-4.5 4 4.5zM12 13l-5-2.5 7.5-7.5L17 8 12 13z"/>
-              </svg>
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/15 overflow-hidden">
+              <img
+                src="/logo/namwan-logo.png"
+                alt="Namwan"
+                className="w-full h-full object-cover"
+              />
             </div>
             <div>
-              <p className="font-bold text-[15px] text-white leading-none">Namwan</p>
-              <p className="text-[11px] text-white/50 mt-0.5">Loyalty Platform</p>
+              <p className="font-bold text-[16px] text-white leading-none">Namwan Loyalty</p>
+              <p className="text-[11px] text-white/55 mt-0.5">Staff Portal</p>
             </div>
           </div>
         </div>
 
         <div className="relative">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.15em] text-white/40 mb-5">
-            Staff Portal
-          </p>
-          <h1 className="text-[42px] font-bold text-white leading-[1.1] tracking-tight mb-5">
+          <h1 className="text-[44px] font-bold text-white leading-[1.05] tracking-tight mb-5">
             Crafted for<br/>
             <span className="text-white/60">every cup.</span>
           </h1>
-          <p className="text-white/50 text-[14px] leading-relaxed mb-10 max-w-xs">
+          <p className="text-white/55 text-[14px] leading-relaxed mb-10 max-w-xs">
             Manage your loyalty programme, track member visits, and grow repeat business — all from one warm place.
           </p>
           <div className="grid grid-cols-2 gap-3">
@@ -59,15 +59,15 @@ export default async function LoginPage({
               ['All branches', 'shared points'],
               ['Real-time', 'QR claims'],
             ].map(([v, l]) => (
-              <div key={l} className="rounded-xl bg-white/8 border border-white/10 p-4">
+              <div key={l} className="rounded-2xl bg-white/12 border border-white/15 p-4">
                 <p className="text-[15px] font-bold text-white">{v}</p>
-                <p className="text-[11px] text-white/40 mt-0.5">{l}</p>
+                <p className="text-[11px] text-white/45 mt-0.5">{l}</p>
               </div>
             ))}
           </div>
         </div>
 
-        <p className="relative text-[11px] text-white/25">© 2025 Namwan · All rights reserved</p>
+        <p className="relative text-[11px] text-white/30">© 2025 Namwan · All rights reserved</p>
       </div>
 
       {/* ── Right form panel ── */}
@@ -75,13 +75,16 @@ export default async function LoginPage({
         <div className="w-full max-w-sm">
 
           {/* Mobile logo */}
-          <div className="mb-8 lg:hidden">
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-brand-700 shadow-lg shadow-brand-900/30 mb-5">
-              <svg viewBox="0 0 24 24" className="w-6 h-6 fill-white">
-                <path d="M3.5 18.5L7 14l4 2-1.5 4H3.5zm17-13L17 9.5l-2-4 1.5-4.5 4 4.5zM12 13l-5-2.5 7.5-7.5L17 8 12 13z"/>
-              </svg>
+          <div className="mb-8 lg:hidden flex flex-col items-center text-center">
+            <div className="flex h-20 w-20 items-center justify-center rounded-3xl overflow-hidden shadow-xl mb-5"
+              style={{ background: '#FF2B00' }}>
+              <img
+                src="/logo/namwan-logo.png"
+                alt="Namwan"
+                className="w-full h-full object-cover"
+              />
             </div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.15em] text-cocoa-400 mb-1">Namwan Loyalty</p>
+            <p className="text-[12px] font-semibold uppercase tracking-[0.15em] text-cocoa-400">Namwan Loyalty</p>
           </div>
 
           <div className="mb-9">

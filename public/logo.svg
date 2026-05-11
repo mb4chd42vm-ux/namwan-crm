@@ -1,0 +1,22 @@
+<svg viewBox="0 0 64 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Stem -->
+  <path d="M32 74 L32 30" stroke="currentColor" stroke-width="3.5" stroke-linecap="round"/>
+
+  <!-- Top grain (vertical ellipse) -->
+  <ellipse cx="32" cy="16" rx="9" ry="13.5" fill="currentColor"/>
+
+  <!-- Left upper grain -->
+  <ellipse cx="18" cy="28" rx="6.5" ry="11" transform="rotate(-25 18 28)" fill="currentColor"/>
+  <!-- Right upper grain -->
+  <ellipse cx="46" cy="28" rx="6.5" ry="11" transform="rotate(25 46 28)" fill="currentColor"/>
+
+  <!-- Left lower grain -->
+  <ellipse cx="14" cy="43" rx="5.5" ry="9" transform="rotate(-32 14 43)" fill="currentColor"/>
+  <!-- Right lower grain -->
+  <ellipse cx="50" cy="43" rx="5.5" ry="9" transform="rotate(32 50 43)" fill="currentColor"/>
+
+  <!-- Left leaf -->
+  <path d="M32 58 Q19 54 16 45 Q27 49 32 57Z" fill="currentColor" opacity="0.45"/>
+  <!-- Right leaf -->
+  <path d="M32 66 Q45 62 48 53 Q37 57 32 65Z" fill="currentColor" opacity="0.45"/>
+</svg>
