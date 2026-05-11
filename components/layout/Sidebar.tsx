@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import Image from 'next/image'
 import { usePathname } from 'next/navigation'
 import {
   LayoutDashboard, Users, Star,
@@ -79,12 +80,12 @@ export default function Sidebar({ user }: { user: SidebarUser }) {
 
         {/* ── Logo ── */}
         <div className="flex items-center gap-3 px-6 py-6 border-b border-cream-300">
-          <div className="relative flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl overflow-hidden shadow-md"
-            style={{ background: '#FF2B00' }}>
-            <img
+          <div className="relative h-9 w-9 flex-shrink-0 rounded-xl overflow-hidden shadow-md">
+            <Image
               src="/logo/namwan-logo.png"
               alt="Namwan"
-              className="w-full h-full object-cover"
+              fill
+              className="object-cover"
             />
           </div>
           <div className="min-w-0 flex-1">

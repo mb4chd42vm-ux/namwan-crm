@@ -7,11 +7,11 @@ export const metadata: Metadata = {
   manifest: '/manifest.json',
   icons: {
     icon: [
-      { url: '/logo/namwan-logo.png', type: 'image/png', sizes: '192x192' },
       { url: '/logo/namwan-logo-32.png', type: 'image/png', sizes: '32x32' },
+      { url: '/logo/namwan-logo.png',    type: 'image/png', sizes: '192x192' },
     ],
     apple: [
-      { url: '/logo/namwan-logo.png', sizes: '180x180' },
+      { url: '/logo/namwan-logo.png', sizes: '180x180', type: 'image/png' },
     ],
   },
 }

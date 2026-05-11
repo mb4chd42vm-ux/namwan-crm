@@ -1,3 +1,4 @@
+import Image from 'next/image'
 import LoginForm from '@/components/auth/LoginForm'
 
 export default async function LoginPage({
@@ -30,11 +31,13 @@ export default async function LoginPage({
         <div className="relative">
           {/* Logo */}
           <div className="flex items-center gap-3">
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/15 overflow-hidden">
-              <img
+            <div className="relative h-12 w-12 rounded-2xl overflow-hidden flex-shrink-0">
+              <Image
                 src="/logo/namwan-logo.png"
                 alt="Namwan"
-                className="w-full h-full object-cover"
+                fill
+                className="object-cover"
+                priority
               />
             </div>
             <div>
@@ -76,12 +79,13 @@ export default async function LoginPage({
 
           {/* Mobile logo */}
           <div className="mb-8 lg:hidden flex flex-col items-center text-center">
-            <div className="flex h-20 w-20 items-center justify-center rounded-3xl overflow-hidden shadow-xl mb-5"
-              style={{ background: '#FF2B00' }}>
-              <img
+            <div className="relative h-20 w-20 rounded-3xl overflow-hidden shadow-xl mb-5">
+              <Image
                 src="/logo/namwan-logo.png"
                 alt="Namwan"
-                className="w-full h-full object-cover"
+                fill
+                className="object-cover"
+                priority
               />
             </div>
             <p className="text-[12px] font-semibold uppercase tracking-[0.15em] text-cocoa-400">Namwan Loyalty</p>
