@@ -34,7 +34,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
   return (
     <SidebarProvider>
-      <div className="flex h-screen overflow-hidden bg-[#f8f7f5]">
+      <div className="flex h-screen overflow-hidden bg-cream-100">
         <Sidebar user={user} />
         <UserProvider user={user}>
           <div className="flex flex-1 flex-col overflow-hidden min-w-0">

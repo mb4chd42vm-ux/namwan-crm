@@ -25,13 +25,13 @@ export default async function QRCreatePage() {
 
   return (
     <div className="flex flex-1 flex-col overflow-hidden">
-      <div className="flex items-center gap-3 border-b border-gray-100 bg-white px-4 py-4 sm:px-6">
-        <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-amber-100">
-          <QrCode size={15} className="text-amber-600" />
+      <div className="flex items-center gap-3 border-b border-cream-300 bg-cream-100/90 backdrop-blur-md px-4 py-4 sm:px-6">
+        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-50 border border-brand-100">
+          <QrCode size={15} className="text-brand-600" />
         </div>
         <div>
-          <h1 className="text-sm font-semibold text-gray-900">Generate Claim QR</h1>
-          <p className="text-[10px] text-gray-400">One-time QR · 5-minute expiry</p>
+          <h1 className="text-[15px] font-semibold text-cocoa-900 tracking-tight">Generate Claim QR</h1>
+          <p className="text-[11px] text-cocoa-400">One-time QR · 5-minute expiry</p>
         </div>
       </div>
 

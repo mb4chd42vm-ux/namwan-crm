@@ -1,40 +1,98 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&display=swap');
 @import "tailwindcss";
 
 @theme {
-  --color-brand-50:  #fdf6ee;
-  --color-brand-100: #faebd4;
-  --color-brand-200: #f4d3a5;
-  --color-brand-300: #ecb46d;
-  --color-brand-400: #e3913a;
-  --color-brand-500: #d97519;
-  --color-brand-600: #c45f12;
-  --color-brand-700: #a34810;
-  --color-brand-800: #843a14;
-  --color-brand-900: #6c3013;
-  --color-brand-950: #3c1708;
+  /* ── Bakery Red — warm pomegranate brand ────────────────────────────── */
+  --color-brand-50:  #FDF3F1;
+  --color-brand-100: #FAE7E3;
+  --color-brand-200: #F4C8BF;
+  --color-brand-300: #EBA08F;
+  --color-brand-400: #DE7358;
+  --color-brand-500: #C85038;
+  --color-brand-600: #A83520;   /* ← PRIMARY CTA – bakery red          */
+  --color-brand-700: #8A2418;
+  --color-brand-800: #671A11;
+  --color-brand-900: #44100B;
+  --color-brand-950: #250806;
 
-  --font-sans: 'Inter', system-ui, sans-serif;
+  /* ── Cocoa Brown — rich typographic depth ───────────────────────────── */
+  --color-cocoa-50:  #FBF7F4;
+  --color-cocoa-100: #F3EAE2;
+  --color-cocoa-200: #E3D0C0;
+  --color-cocoa-300: #CEAD97;
+  --color-cocoa-400: #B38C72;
+  --color-cocoa-500: #966E4E;
+  --color-cocoa-600: #7A5538;
+  --color-cocoa-700: #5E3D26;
+  --color-cocoa-800: #3D2718;
+  --color-cocoa-900: #1E130C;
+  --color-cocoa-950: #0F0906;
+
+  /* ── Cream — warm bakery backgrounds ───────────────────────────────── */
+  --color-cream-50:  #FEFDFB;
+  --color-cream-100: #FAF8F4;
+  --color-cream-200: #F3EEE5;
+  --color-cream-300: #E8DFCF;
+  --color-cream-400: #D9CDB8;
+  --color-cream-500: #C5B49C;
+  --color-cream-600: #AA967A;
+
+  /* ── Sand — warm accent neutral ─────────────────────────────────────── */
+  --color-sand-100: #F5EDE0;
+  --color-sand-200: #EADAC0;
+  --color-sand-300: #D9BF98;
+  --color-sand-400: #C4A070;
+
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
 }
 
 *, *::before, *::after { box-sizing: border-box; }
-html { -webkit-font-smoothing: antialiased; }
-body { background: #f8f7f5; color: #111827; font-family: var(--font-sans); }
 
-::-webkit-scrollbar { width: 4px; height: 4px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { border-radius: 9999px; background: #d1d5db; }
-
-.glass { background: rgba(255,255,255,0.7); backdrop-filter: blur(12px); }
-
-/* QR scanner scan-line animation */
-@keyframes scanline {
-  0%   { top: 8px;   opacity: 1; }
-  50%  { top: calc(100% - 8px); opacity: 1; }
-  100% { top: 8px;   opacity: 1; }
+html {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  scroll-behavior: smooth;
 }
 
-/* Suppress html5-qrcode internal chrome (status text, file button) */
+body {
+  background: #FAF8F4;
+  color: #1A0C06;
+  font-family: var(--font-sans);
+}
+
+/* Premium micro-scrollbar */
+::-webkit-scrollbar        { width: 3px; height: 3px; }
+::-webkit-scrollbar-track  { background: transparent; }
+::-webkit-scrollbar-thumb  { border-radius: 9999px; background: #D9CDB8; }
+::-webkit-scrollbar-thumb:hover { background: #C5B49C; }
+
+/* Glassmorphism — warm-tinted */
+.glass {
+  background: rgba(250, 248, 244, 0.75);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+/* Premium shimmer — cream palette */
+@keyframes shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position:  200% 0; }
+}
+.shimmer {
+  background: linear-gradient(90deg, #F3EEE5 0%, #FAF8F4 50%, #F3EEE5 100%);
+  background-size: 200% 100%;
+  animation: shimmer 1.8s ease-in-out infinite;
+}
+
+/* QR scanner scan-line */
+@keyframes scanline {
+  0%   { top: 8px;              opacity: 1; }
+  50%  { top: calc(100% - 8px); opacity: 1; }
+  100% { top: 8px;              opacity: 1; }
+}
+
+/* Suppress html5-qrcode internals */
 #qr-scanner-region > div:not([id]) { display: none !important; }
 #qr-scanner-region img,
 #qr-scanner-region select,

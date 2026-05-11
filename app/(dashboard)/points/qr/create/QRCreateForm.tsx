@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useTransition, useRef } from 'react'
-import { QrCode, Coffee, Star, RefreshCw, CheckCircle, Copy, Minus, Plus } from 'lucide-react'
+import { QrCode, Star, RefreshCw, CheckCircle, Copy, Minus, Plus, Clock } from 'lucide-react'
 import { createQRToken } from '@/app/actions/qrClaims'
 
 interface Branch { id: string; name: string; color_hex: string }
@@ -23,7 +23,8 @@ export default function QRCreateForm({
   const [copied, setCopied]     = useState(false)
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  const pointsEarned = drinks
+  const pointsEarned   = drinks
+  const selectedBranch = branches.find(b => b.id === branchId)
 
   function reset() {
     setResult(null)
@@ -67,56 +68,67 @@ export default function QRCreateForm({
     ? Math.max(0, Math.round((new Date(result.expiresAt).getTime() - Date.now()) / 1000 / 60))
     : 0
 
-  const selectedBranch = branches.find(b => b.id === branchId)
-
   return (
-    <div className="mx-auto w-full max-w-md space-y-4">
+    <div className="mx-auto w-full max-w-md">
 
       {result ? (
         /* ── QR display ── */
-        <div className="rounded-2xl border border-white/80 bg-white shadow-[0_1px_3px_rgba(0,0,0,0.05)] p-6 text-center space-y-5">
+        <div className="rounded-3xl bg-white border border-cream-200 shadow-sm p-7 text-center space-y-6">
+
+          {/* Header */}
           <div>
-            <p className="text-lg font-bold text-gray-900">Scan to Claim Points</p>
-            <p className="text-sm text-gray-400 mt-1">
-              Expires in ~{expiresIn} min · {drinks} drink{drinks !== 1 ? 's' : ''} = {pointsEarned} pt{pointsEarned !== 1 ? 's' : ''}
+            <div className="flex h-12 w-12 mx-auto items-center justify-center rounded-2xl bg-brand-50 mb-4">
+              <QrCode size={22} className="text-brand-600" />
+            </div>
+            <p className="text-[20px] font-bold text-cocoa-900">Scan to Claim Points</p>
+            <p className="text-[13px] text-cocoa-400 mt-1.5">
+              {drinks} drink{drinks !== 1 ? 's' : ''} · +{pointsEarned} point{pointsEarned !== 1 ? 's' : ''}
             </p>
           </div>
 
-          {/* Large QR code — responsive, max 320px */}
+          {/* QR code */}
           <div
-            className="mx-auto w-full max-w-[320px] flex items-center justify-center rounded-2xl border-4 border-amber-100 bg-white p-4 shadow-inner [&>svg]:w-full [&>svg]:h-auto"
+            className="mx-auto w-full max-w-[280px] flex items-center justify-center rounded-2xl border-4 border-cream-200 bg-white p-4 [&>svg]:w-full [&>svg]:h-auto"
             dangerouslySetInnerHTML={{ __html: result.qrSvg }}
           />
 
-          {/* Copy link — full width */}
+          {/* Timer pill */}
+          <div className="flex items-center justify-center gap-2 rounded-xl bg-sand-100 border border-sand-200 px-5 py-3">
+            <Clock size={13} className="text-cocoa-500" />
+            <span className="text-[13px] font-semibold text-cocoa-700 tabular-nums">
+              Expires at {new Date(result.expiresAt).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}
+              {' '}· ~{expiresIn} min
+            </span>
+          </div>
+
+          {/* Copy link */}
           <button
             onClick={copyLink}
-            className="w-full flex items-center justify-center gap-2 rounded-xl border border-gray-200 h-12 text-sm font-semibold text-gray-600 hover:bg-gray-50 transition-colors"
+            className="w-full flex items-center justify-center gap-2 rounded-xl border border-cream-300 bg-cream-50 h-12 text-[13px] font-semibold text-cocoa-600 hover:bg-cream-100 transition-colors"
           >
-            {copied ? <CheckCircle size={15} className="text-emerald-500" /> : <Copy size={15} />}
-            {copied ? 'Copied!' : 'Copy claim link'}
+            {copied
+              ? <><CheckCircle size={14} className="text-emerald-600" /> Copied!</>
+              : <><Copy size={14} /> Copy claim link</>
+            }
           </button>
 
-          {/* Expiry — full width */}
-          <p className="text-sm text-amber-600 bg-amber-50 border border-amber-100 rounded-xl px-4 py-3 text-center">
-            QR expires at {new Date(result.expiresAt).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}
-          </p>
-
+          {/* Generate another */}
           <button
             onClick={reset}
-            className="flex items-center gap-2 mx-auto text-sm text-brand-600 hover:text-brand-700 font-semibold py-1"
+            className="flex items-center gap-2 mx-auto text-[13px] text-brand-600 hover:text-brand-700 font-semibold py-1"
           >
-            <RefreshCw size={14} /> Generate another
+            <RefreshCw size={13} /> Generate another
           </button>
         </div>
+
       ) : (
         /* ── Form ── */
-        <div className="rounded-2xl border border-white/80 bg-white shadow-[0_1px_3px_rgba(0,0,0,0.05)] p-6 space-y-6">
+        <div className="rounded-3xl bg-white border border-cream-200 shadow-sm p-6 space-y-7">
 
           {/* Branch selector */}
           <div>
-            <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">
-              Branch *
+            <label className="block text-[11px] font-semibold text-cocoa-500 uppercase tracking-[0.12em] mb-3">
+              Branch
             </label>
             <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
               {branches.map(b => (
@@ -124,16 +136,16 @@ export default function QRCreateForm({
                   key={b.id}
                   type="button"
                   onClick={() => setBranchId(b.id)}
-                  className={`flex items-center gap-2 rounded-xl border px-4 py-3 text-sm font-semibold transition-all ${
+                  className={`flex items-center gap-2.5 rounded-xl border px-4 py-3 text-[13px] font-semibold transition-all active:scale-[0.97] ${
                     branchId === b.id
-                      ? 'border-transparent text-white shadow-sm'
-                      : 'border-gray-200 text-gray-600 bg-white hover:border-gray-300'
+                      ? 'border-transparent text-white shadow-md'
+                      : 'border-cream-300 text-cocoa-600 bg-white hover:border-cream-400'
                   }`}
                   style={branchId === b.id ? { background: b.color_hex } : {}}
                 >
                   <span
                     className="h-2.5 w-2.5 rounded-full flex-shrink-0"
-                    style={{ background: branchId === b.id ? 'rgba(255,255,255,0.6)' : b.color_hex }}
+                    style={{ background: branchId === b.id ? 'rgba(255,255,255,0.55)' : b.color_hex }}
                   />
                   {b.name}
                 </button>
@@ -143,66 +155,62 @@ export default function QRCreateForm({
 
           {/* Drinks counter */}
           <div>
-            <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">
-              Drinks to Award *
-              <span className="ml-1.5 normal-case font-normal text-gray-400">1 drink = 1 point</span>
+            <label className="block text-[11px] font-semibold text-cocoa-500 uppercase tracking-[0.12em] mb-1">
+              Drinks to Award
             </label>
+            <p className="text-[12px] text-cocoa-400 mb-4">1 drink = 1 point earned by customer</p>
 
-            {/* Large stepper for POS use */}
-            <div className="flex items-center justify-between gap-4 rounded-2xl border border-gray-200 p-3">
+            <div className="flex items-center justify-between gap-4 rounded-2xl border border-cream-300 bg-cream-50 p-4">
               <button
                 type="button"
                 onClick={() => setDrinks(d => Math.max(1, d - 1))}
-                className="flex h-12 w-12 items-center justify-center rounded-xl bg-gray-100 text-gray-700 hover:bg-gray-200 active:scale-95 transition-all text-xl font-bold"
+                className="flex h-14 w-14 items-center justify-center rounded-xl bg-white border border-cream-300 text-cocoa-700 hover:border-cream-400 active:scale-95 transition-all shadow-sm"
               >
                 <Minus size={20} />
               </button>
 
               <div className="text-center">
-                <p className="text-4xl font-black text-gray-900 leading-none">{drinks}</p>
-                <div className="mt-1.5">
-                  {drinks > 0 ? (
-                    <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 border border-emerald-100 px-2.5 py-0.5 text-xs font-semibold text-emerald-700">
-                      <Star size={10} className="fill-emerald-400 text-emerald-500" />
-                      +{pointsEarned} point{pointsEarned !== 1 ? 's' : ''}
-                    </span>
-                  ) : (
-                    <span className="text-xs text-gray-400">
-                      <Coffee size={12} className="inline mr-1" />
-                      drinks
-                    </span>
-                  )}
+                <p className="text-[52px] font-black text-cocoa-900 leading-none">{drinks}</p>
+                <div className="mt-2">
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-brand-50 border border-brand-100 px-3 py-1 text-[11px] font-semibold text-brand-700">
+                    <Star size={9} className="fill-brand-400 text-brand-400" />
+                    +{pointsEarned} point{pointsEarned !== 1 ? 's' : ''}
+                  </span>
                 </div>
               </div>
 
               <button
                 type="button"
                 onClick={() => setDrinks(d => d + 1)}
-                className="flex h-12 w-12 items-center justify-center rounded-xl text-white active:scale-95 transition-all"
-                style={{ background: selectedBranch?.color_hex ?? '#c45f12' }}
+                className="flex h-14 w-14 items-center justify-center rounded-xl text-white active:scale-95 transition-all shadow-md"
+                style={{ background: selectedBranch?.color_hex ?? '#8A2418' }}
               >
                 <Plus size={20} />
               </button>
             </div>
           </div>
 
-          <p className="text-xs text-gray-400 bg-gray-50 border border-gray-100 rounded-xl px-4 py-3">
-            QR code expires 5 minutes after generation and can only be claimed once.
-          </p>
+          {/* Info note */}
+          <div className="flex items-start gap-3 rounded-xl bg-cream-50 border border-cream-200 px-4 py-3.5">
+            <Clock size={13} className="text-cocoa-400 flex-shrink-0 mt-0.5" />
+            <p className="text-[12px] text-cocoa-500 leading-relaxed">
+              QR expires 5 minutes after generation and can only be claimed once.
+            </p>
+          </div>
 
           {error && (
-            <p className="rounded-xl bg-red-50 border border-red-100 px-4 py-3 text-sm text-red-600">
+            <div className="rounded-xl bg-brand-50 border border-brand-100 px-4 py-3 text-[13px] text-brand-700">
               {error}
-            </p>
+            </div>
           )}
 
           <button
             type="button"
             onClick={submit}
             disabled={isPending || drinks <= 0 || !branchId}
-            className="w-full flex items-center justify-center gap-2.5 rounded-xl bg-amber-500 h-14 text-base font-bold text-white hover:bg-amber-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full flex items-center justify-center gap-2.5 rounded-2xl bg-brand-700 h-14 text-[15px] font-bold text-white hover:bg-brand-800 active:scale-[0.98] transition-all disabled:opacity-40 disabled:cursor-not-allowed shadow-lg shadow-brand-900/20"
           >
-            <QrCode size={18} />
+            <QrCode size={17} />
             {isPending ? 'Generating…' : `Generate QR · ${drinks} drink${drinks !== 1 ? 's' : ''}`}
           </button>
         </div>

@@ -16,9 +16,7 @@ type Html5QrcodeInstance = {
 }
 
 const ELEMENT_ID = 'qr-scanner-region'
-
-// A valid redeem token is a 48-char hex string (randomBytes(24).toString('hex'))
-const TOKEN_RE = /^[0-9a-f]{48}$/i
+const TOKEN_RE   = /^[0-9a-f]{48}$/i
 
 type CameraState = 'init' | 'requesting' | 'scanning' | 'error' | 'denied'
 
@@ -31,7 +29,6 @@ export default function ScannerClient() {
   const [manualToken, setManualToken] = useState('')
   const [manualErr,   setManualErr]   = useState<string | null>(null)
 
-  // Debug panel state
   const [debugRaw,    setDebugRaw]    = useState<string | null>(null)
   const [debugToken,  setDebugToken]  = useState<string | null>(null)
   const [debugDetail, setDebugDetail] = useState<string | null>(null)
@@ -39,29 +36,22 @@ export default function ScannerClient() {
   const scannerRef = useRef<Html5QrcodeInstance | null>(null)
   const stoppedRef = useRef(false)
 
-  // ── Token handler ────────────────────────────────────────────────────────────
-
   function handleQrValue(raw: string) {
     if (stoppedRef.current) return
     stoppedRef.current = true
 
     const trimmed = raw.trim()
     setDebugRaw(trimmed)
-
     stopScanner()
 
-    // If it's a full URL, navigate to its pathname directly
     try {
       const url = new URL(trimmed)
       setDebugDetail(`URL pathname: ${url.pathname}`)
       setDebugToken(null)
       router.push(url.pathname)
       return
-    } catch {
-      // Not a URL — fall through
-    }
+    } catch {}
 
-    // Otherwise expect a raw 48-char hex token
     if (TOKEN_RE.test(trimmed)) {
       setDebugDetail(`Raw token`)
       setDebugToken(trimmed)
@@ -71,11 +61,9 @@ export default function ScannerClient() {
       setDebugToken(null)
       setCameraState('error')
       setErrorMsg(`Could not read QR code.\nGot: ${trimmed.slice(0, 60)}`)
-      stoppedRef.current = false // allow retry
+      stoppedRef.current = false
     }
   }
-
-  // ── Scanner lifecycle ────────────────────────────────────────────────────────
 
   async function startScanner() {
     stoppedRef.current = false
@@ -126,22 +114,15 @@ export default function ScannerClient() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode])
 
-  // ── Manual entry ─────────────────────────────────────────────────────────────
-
   function submitManual() {
     const trimmed = manualToken.trim()
-
-    // Full URL → navigate to pathname
     try {
       const url = new URL(trimmed)
       setManualErr(null)
       router.push(url.pathname)
       return
-    } catch {
-      // Not a URL
-    }
+    } catch {}
 
-    // Raw token
     if (TOKEN_RE.test(trimmed)) {
       setManualErr(null)
       router.push(`/points/redeem/confirm/${trimmed}`)
@@ -150,13 +131,11 @@ export default function ScannerClient() {
     }
   }
 
-  // ── Render ───────────────────────────────────────────────────────────────────
-
   return (
     <div className="flex flex-col items-center gap-5 w-full max-w-lg mx-auto">
 
       {/* Mode toggle */}
-      <div className="flex w-full rounded-xl border border-gray-200 bg-gray-50 p-1 gap-1">
+      <div className="flex w-full rounded-2xl border border-cream-300 bg-cream-100 p-1 gap-1">
         {[
           { id: 'camera', label: 'Camera Scan', icon: Camera   },
           { id: 'manual', label: 'Enter Token', icon: Keyboard },
@@ -164,8 +143,10 @@ export default function ScannerClient() {
           <button
             key={id}
             onClick={() => setMode(id as 'camera' | 'manual')}
-            className={`flex flex-1 items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-semibold transition-all ${
-              mode === id ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-400 hover:text-gray-600'
+            className={`flex flex-1 items-center justify-center gap-2 rounded-xl py-3 text-[13px] font-semibold transition-all ${
+              mode === id
+                ? 'bg-white text-cocoa-900 shadow-sm'
+                : 'text-cocoa-400 hover:text-cocoa-700'
             }`}
           >
             <Icon size={14} /> {label}
@@ -175,19 +156,22 @@ export default function ScannerClient() {
 
       {/* ── Camera panel ── */}
       {mode === 'camera' && (
-        <div className="w-full space-y-3">
-          <div className="relative w-full overflow-hidden rounded-2xl bg-black shadow-lg" style={{ aspectRatio: '1/1' }}>
+        <div className="w-full space-y-4">
+          <div
+            className="relative w-full overflow-hidden rounded-3xl shadow-xl shadow-cocoa-900/15"
+            style={{ aspectRatio: '1/1', background: '#1A0C06' }}
+          >
             <div
               id={ELEMENT_ID}
               className="w-full h-full [&>video]:w-full [&>video]:h-full [&>video]:object-cover [&_img]:hidden [&_select]:hidden [&_button]:hidden"
             />
 
-            {/* Init / requesting overlay */}
+            {/* Init / requesting */}
             {(cameraState === 'init' || cameraState === 'requesting') && (
-              <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black/80">
-                <Loader2 size={32} className="text-amber-400 animate-spin" />
-                <p className="text-sm text-white font-medium">
-                  {cameraState === 'requesting' ? 'Requesting camera…' : 'Starting…'}
+              <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-cocoa-950/90">
+                <Loader2 size={28} className="text-sand-300 animate-spin" />
+                <p className="text-[13px] text-white/60 font-medium">
+                  {cameraState === 'requesting' ? 'Requesting camera access…' : 'Starting camera…'}
                 </p>
               </div>
             )}
@@ -195,64 +179,76 @@ export default function ScannerClient() {
             {/* Scan overlay */}
             {cameraState === 'scanning' && (
               <div className="absolute inset-0 pointer-events-none flex flex-col items-center justify-center">
-                <div className="absolute inset-0 bg-black/40" style={{ WebkitMaskImage: 'radial-gradient(circle, transparent 120px, black 121px)' }} />
+                <div
+                  className="absolute inset-0 bg-cocoa-950/50"
+                  style={{ WebkitMaskImage: 'radial-gradient(circle, transparent 115px, black 116px)' }}
+                />
+                {/* Corner markers */}
                 <div className="relative h-60 w-60">
                   {(['tl','tr','bl','br'] as const).map(c => (
-                    <span key={c} className={`absolute h-9 w-9 border-white ${
+                    <span key={c} className={`absolute h-8 w-8 border-white/90 ${
                       c === 'tl' ? 'top-0 left-0 border-t-[3px] border-l-[3px] rounded-tl-xl' :
                       c === 'tr' ? 'top-0 right-0 border-t-[3px] border-r-[3px] rounded-tr-xl' :
                       c === 'bl' ? 'bottom-0 left-0 border-b-[3px] border-l-[3px] rounded-bl-xl' :
                                    'bottom-0 right-0 border-b-[3px] border-r-[3px] rounded-br-xl'
                     }`} />
                   ))}
-                  <div className="absolute left-2 right-2 h-[2px] bg-amber-400/90 rounded-full animate-[scanline_2s_ease-in-out_infinite]" />
+                  {/* Scan line */}
+                  <div className="absolute left-0 right-0 h-[2px] rounded-full animate-[scanline_2s_ease-in-out_infinite]"
+                    style={{ background: 'linear-gradient(90deg, transparent, #F5C842, transparent)' }}
+                  />
                 </div>
-                <div className="absolute bottom-4 flex items-center gap-2 rounded-full bg-black/60 px-4 py-2 backdrop-blur-sm">
+                {/* Status pill */}
+                <div className="absolute bottom-5 flex items-center gap-2 rounded-full bg-cocoa-950/70 border border-white/10 px-4 py-2 backdrop-blur-sm">
                   <div className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-                  <span className="text-xs text-white font-medium">Scanning…</span>
+                  <span className="text-[12px] text-white/80 font-medium">Scanning for QR code…</span>
                 </div>
               </div>
             )}
 
             {/* Permission denied */}
             {cameraState === 'denied' && (
-              <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-black/90 p-6 text-center">
-                <ShieldAlert size={36} className="text-amber-400" />
-                <div className="space-y-1">
-                  <p className="text-sm font-bold text-white">Camera access denied</p>
-                  <p className="text-xs text-white/60 leading-relaxed">
+              <div className="absolute inset-0 flex flex-col items-center justify-center gap-5 bg-cocoa-950/95 p-7 text-center">
+                <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-white/10">
+                  <ShieldAlert size={28} className="text-sand-300" />
+                </div>
+                <div className="space-y-1.5">
+                  <p className="text-[15px] font-bold text-white">Camera access denied</p>
+                  <p className="text-[12px] text-white/50 leading-relaxed">
                     Allow camera in browser settings, then tap Retry.
                   </p>
                 </div>
                 <button
                   onClick={() => { setCameraState('init'); startScanner() }}
-                  className="rounded-xl bg-amber-400 px-5 py-2 text-sm font-bold text-amber-900"
+                  className="rounded-xl bg-brand-700 px-8 py-2.5 text-[13px] font-bold text-white active:scale-[0.97] transition-all"
                 >
                   Retry
                 </button>
               </div>
             )}
 
-            {/* Error */}
+            {/* Scan error */}
             {cameraState === 'error' && (
-              <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-black/90 p-6 text-center">
-                <AlertTriangle size={36} className="text-red-400" />
-                <div className="space-y-1">
-                  <p className="text-sm font-bold text-white">Scan failed</p>
-                  <p className="text-xs text-white/50 leading-relaxed whitespace-pre-line">
+              <div className="absolute inset-0 flex flex-col items-center justify-center gap-5 bg-cocoa-950/95 p-7 text-center">
+                <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-white/10">
+                  <AlertTriangle size={28} className="text-brand-300" />
+                </div>
+                <div className="space-y-1.5">
+                  <p className="text-[15px] font-bold text-white">Scan failed</p>
+                  <p className="text-[12px] text-white/50 leading-relaxed whitespace-pre-line">
                     {errorMsg ?? 'Could not read QR code'}
                   </p>
                 </div>
                 <div className="flex gap-2">
                   <button
                     onClick={() => { setCameraState('init'); startScanner() }}
-                    className="rounded-xl bg-white/10 px-4 py-2 text-sm font-semibold text-white"
+                    className="rounded-xl bg-white/12 border border-white/15 px-5 py-2.5 text-[13px] font-semibold text-white"
                   >
                     Retry
                   </button>
                   <button
                     onClick={() => setMode('manual')}
-                    className="rounded-xl bg-amber-400 px-4 py-2 text-sm font-bold text-amber-900"
+                    className="rounded-xl bg-brand-700 px-5 py-2.5 text-[13px] font-bold text-white"
                   >
                     Enter token
                   </button>
@@ -261,20 +257,20 @@ export default function ScannerClient() {
             )}
           </div>
 
-          <p className="text-center text-xs text-gray-400">
+          <p className="text-center text-[12px] text-cocoa-400">
             Point camera at the customer's redemption QR code
           </p>
 
-          {/* Debug panel — shown when a scan was attempted */}
+          {/* Debug panel */}
           {debugRaw !== null && (
-            <details className="rounded-xl border border-gray-200 bg-gray-50 text-xs">
-              <summary className="cursor-pointer px-4 py-2.5 font-semibold text-gray-500 select-none">
+            <details className="rounded-xl border border-cream-300 bg-cream-50 text-[12px]">
+              <summary className="cursor-pointer px-4 py-3 font-semibold text-cocoa-500 select-none">
                 Scan debug info
               </summary>
-              <div className="px-4 pb-3 space-y-1.5 text-gray-600 font-mono break-all">
-                <div><span className="font-semibold text-gray-400">Raw:</span> {debugRaw}</div>
-                <div><span className="font-semibold text-gray-400">Token:</span> {debugToken ?? 'not found'}</div>
-                <div><span className="font-semibold text-gray-400">Detail:</span> {debugDetail}</div>
+              <div className="px-4 pb-3.5 pt-1 space-y-1.5 text-cocoa-600 font-mono break-all">
+                <div><span className="font-semibold text-cocoa-400">Raw:</span> {debugRaw}</div>
+                <div><span className="font-semibold text-cocoa-400">Token:</span> {debugToken ?? 'not found'}</div>
+                <div><span className="font-semibold text-cocoa-400">Detail:</span> {debugDetail}</div>
               </div>
             </details>
           )}
@@ -283,16 +279,18 @@ export default function ScannerClient() {
 
       {/* ── Manual panel ── */}
       {mode === 'manual' && (
-        <div className="w-full space-y-3">
-          <div className="rounded-2xl border border-gray-200 bg-gray-50 p-5 text-center space-y-2">
-            <QrCode size={28} className="text-gray-300 mx-auto" />
-            <p className="text-xs text-gray-500 leading-relaxed">
+        <div className="w-full space-y-4">
+          <div className="rounded-2xl border border-cream-200 bg-cream-50 p-6 text-center space-y-2.5">
+            <div className="flex h-12 w-12 mx-auto items-center justify-center rounded-2xl bg-cream-200">
+              <QrCode size={20} className="text-cocoa-400" />
+            </div>
+            <p className="text-[13px] text-cocoa-500 leading-relaxed">
               Paste the full redeem URL or the token from the customer's QR screen.
             </p>
           </div>
 
           <div>
-            <label className="block text-[11px] font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
+            <label className="block text-[11px] font-semibold text-cocoa-500 uppercase tracking-widest mb-2">
               Redemption URL or Token
             </label>
             <input
@@ -301,17 +299,17 @@ export default function ScannerClient() {
               onChange={e => { setManualToken(e.target.value); setManualErr(null) }}
               onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); submitManual() } }}
               placeholder="Paste URL or token…"
-              className="w-full h-12 rounded-xl border border-gray-200 px-4 text-sm font-mono text-gray-900 placeholder:text-gray-400 focus:outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-400/20 transition-colors"
+              className="w-full h-12 rounded-xl border border-cream-300 bg-white px-4 text-[13px] font-mono text-cocoa-900 placeholder:text-cocoa-300 focus:outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-400/20 transition-all"
             />
-            {manualErr && <p className="mt-1.5 text-xs text-red-600">{manualErr}</p>}
+            {manualErr && <p className="mt-1.5 text-[12px] text-brand-600">{manualErr}</p>}
           </div>
 
           <button
             onClick={submitManual}
             disabled={manualToken.trim().length < 10}
-            className="w-full h-12 rounded-xl bg-amber-500 text-sm font-semibold text-white hover:bg-amber-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            className="w-full h-12 rounded-xl bg-brand-700 text-[14px] font-semibold text-white hover:bg-brand-800 active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-md shadow-brand-900/20"
           >
-            Look up token
+            Look up token →
           </button>
         </div>
       )}

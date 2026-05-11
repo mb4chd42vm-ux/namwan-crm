@@ -14,9 +14,9 @@ export default function LoginForm({ error }: { error: string | null }) {
   }
 
   return (
-    <form action={submit} className="space-y-4">
-      <div className="space-y-1.5">
-        <label htmlFor="email" className="block text-sm font-medium text-gray-700">
+    <form action={submit} className="space-y-5">
+      <div className="space-y-2">
+        <label htmlFor="email" className="block text-[12px] font-semibold text-cocoa-600 uppercase tracking-wide">
           Email
         </label>
         <input
@@ -26,12 +26,12 @@ export default function LoginForm({ error }: { error: string | null }) {
           required
           autoComplete="email"
           placeholder="you@example.com"
-          className="block w-full rounded-xl border border-gray-200 bg-white px-4 h-13 text-base shadow-sm placeholder:text-gray-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20 transition-colors"
+          className="block w-full rounded-xl border border-cream-300 bg-white px-4 h-12 text-[14px] text-cocoa-900 shadow-sm placeholder:text-cocoa-300 focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-500/15 transition-all"
         />
       </div>
 
-      <div className="space-y-1.5">
-        <label htmlFor="password" className="block text-sm font-medium text-gray-700">
+      <div className="space-y-2">
+        <label htmlFor="password" className="block text-[12px] font-semibold text-cocoa-600 uppercase tracking-wide">
           Password
         </label>
         <input
@@ -41,21 +41,21 @@ export default function LoginForm({ error }: { error: string | null }) {
           required
           autoComplete="current-password"
           placeholder="••••••••"
-          className="block w-full rounded-xl border border-gray-200 bg-white px-4 h-13 text-base shadow-sm placeholder:text-gray-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20 transition-colors"
+          className="block w-full rounded-xl border border-cream-300 bg-white px-4 h-12 text-[14px] text-cocoa-900 shadow-sm placeholder:text-cocoa-300 focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-500/15 transition-all"
         />
       </div>
 
       {error && (
-        <div className="flex items-center gap-2.5 rounded-xl bg-red-50 border border-red-100 px-4 py-3">
-          <AlertCircle size={14} className="text-red-500 flex-shrink-0" />
-          <p className="text-xs text-red-700">{decodeURIComponent(error)}</p>
+        <div className="flex items-center gap-2.5 rounded-xl bg-brand-50 border border-brand-100 px-4 py-3">
+          <AlertCircle size={14} className="text-brand-500 flex-shrink-0" />
+          <p className="text-[13px] text-brand-700">{decodeURIComponent(error)}</p>
         </div>
       )}
 
       <button
         type="submit"
         disabled={isPending}
-        className="mt-2 flex w-full items-center justify-center gap-2 rounded-xl bg-brand-600 h-13 text-base font-semibold text-white shadow-sm hover:bg-brand-700 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+        className="mt-1 flex w-full items-center justify-center gap-2 rounded-xl bg-brand-700 h-12 text-[14px] font-semibold text-white shadow-md shadow-brand-900/20 hover:bg-brand-800 active:scale-[0.98] transition-all disabled:opacity-60 disabled:cursor-not-allowed"
       >
         {isPending ? (
           <>
@@ -63,7 +63,7 @@ export default function LoginForm({ error }: { error: string | null }) {
             Signing in…
           </>
         ) : (
-          'Sign In →'
+          'Sign In'
         )}
       </button>
     </form>

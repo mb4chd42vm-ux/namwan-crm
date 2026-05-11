@@ -21,9 +21,9 @@ export default async function RedeemScanPage() {
 
       <main className="flex-1 overflow-y-auto px-6 py-6">
         <div className="mx-auto max-w-lg space-y-6">
-          <div className="rounded-2xl border border-amber-100 bg-amber-50 px-5 py-4">
-            <p className="text-sm font-semibold text-amber-800">How to confirm a redemption</p>
-            <ol className="mt-2 space-y-1 text-xs text-amber-700 list-decimal list-inside">
+          <div className="rounded-2xl border border-cream-200 bg-white px-5 py-4 shadow-sm">
+            <p className="text-[13px] font-semibold text-cocoa-900 mb-2">How to confirm a redemption</p>
+            <ol className="space-y-1.5 text-[12px] text-cocoa-500 list-decimal list-inside leading-relaxed">
               <li>Customer taps "Redeem" in the LINE member app and shows you a QR code</li>
               <li>Scan the QR with the camera below (or enter the token manually)</li>
               <li>Verify the customer's name and points balance on the next screen</li>
