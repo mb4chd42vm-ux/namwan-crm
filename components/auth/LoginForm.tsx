@@ -3,9 +3,11 @@
 import { useTransition } from 'react'
 import { AlertCircle, Loader2 } from 'lucide-react'
 import { login } from '@/app/actions/auth'
+import { useLanguage } from '@/components/i18n/LanguageProvider'
 
 export default function LoginForm({ error }: { error: string | null }) {
   const [isPending, startTransition] = useTransition()
+  const { t } = useLanguage()
 
   function submit(formData: FormData) {
     startTransition(async () => {
@@ -17,7 +19,7 @@ export default function LoginForm({ error }: { error: string | null }) {
     <form action={submit} className="space-y-5">
       <div className="space-y-2">
         <label htmlFor="email" className="block text-[12px] font-semibold text-cocoa-600 uppercase tracking-wide">
-          Email
+          {t.auth.email}
         </label>
         <input
           id="email"
@@ -25,14 +27,14 @@ export default function LoginForm({ error }: { error: string | null }) {
           type="email"
           required
           autoComplete="email"
-          placeholder="you@example.com"
+          placeholder={t.auth.emailPlaceholder}
           className="block w-full rounded-xl border border-cream-300 bg-white px-4 h-12 text-[14px] text-cocoa-900 shadow-sm placeholder:text-cocoa-300 focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-500/15 transition-all"
         />
       </div>
 
       <div className="space-y-2">
         <label htmlFor="password" className="block text-[12px] font-semibold text-cocoa-600 uppercase tracking-wide">
-          Password
+          {t.auth.password}
         </label>
         <input
           id="password"
@@ -40,7 +42,7 @@ export default function LoginForm({ error }: { error: string | null }) {
           type="password"
           required
           autoComplete="current-password"
-          placeholder="••••••••"
+          placeholder={t.auth.passwordPlaceholder}
           className="block w-full rounded-xl border border-cream-300 bg-white px-4 h-12 text-[14px] text-cocoa-900 shadow-sm placeholder:text-cocoa-300 focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-500/15 transition-all"
         />
       </div>
@@ -60,10 +62,10 @@ export default function LoginForm({ error }: { error: string | null }) {
         {isPending ? (
           <>
             <Loader2 size={14} className="animate-spin" />
-            Signing in…
+            {t.auth.signingIn}
           </>
         ) : (
-          'Sign In'
+          t.auth.signIn
         )}
       </button>
     </form>

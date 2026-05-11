@@ -3,6 +3,7 @@
 import { useState, useTransition, useRef } from 'react'
 import { QrCode, Star, RefreshCw, CheckCircle, Copy, Minus, Plus, Clock } from 'lucide-react'
 import { createQRToken } from '@/app/actions/qrClaims'
+import { useLanguage } from '@/components/i18n/LanguageProvider'
 
 interface Branch { id: string; name: string; color_hex: string }
 
@@ -15,6 +16,7 @@ export default function QRCreateForm({
   defaultBranchId?: string | null
   baseUrl: string
 }) {
+  const { t } = useLanguage()
   const [isPending, startTransition] = useTransition()
   const [error, setError]       = useState<string | null>(null)
   const [branchId, setBranchId] = useState(defaultBranchId ?? branches[0]?.id ?? '')
@@ -80,7 +82,7 @@ export default function QRCreateForm({
             <div className="flex h-12 w-12 mx-auto items-center justify-center rounded-2xl bg-brand-50 mb-4">
               <QrCode size={22} className="text-brand-600" />
             </div>
-            <p className="text-[20px] font-bold text-cocoa-900">Scan to Claim Points</p>
+            <p className="text-[20px] font-bold text-cocoa-900">{t.qrClaim.scanInstruction}</p>
             <p className="text-[13px] text-cocoa-400 mt-1.5">
               {drinks} drink{drinks !== 1 ? 's' : ''} · +{pointsEarned} point{pointsEarned !== 1 ? 's' : ''}
             </p>
@@ -96,8 +98,8 @@ export default function QRCreateForm({
           <div className="flex items-center justify-center gap-2 rounded-xl bg-sand-100 border border-sand-200 px-5 py-3">
             <Clock size={13} className="text-cocoa-500" />
             <span className="text-[13px] font-semibold text-cocoa-700 tabular-nums">
-              Expires at {new Date(result.expiresAt).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}
-              {' '}· ~{expiresIn} min
+              {t.qrClaim.expiresIn} {new Date(result.expiresAt).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}
+              {' '}· ~{expiresIn} {t.qrClaim.minutes}
             </span>
           </div>
 
@@ -107,8 +109,8 @@ export default function QRCreateForm({
             className="w-full flex items-center justify-center gap-2 rounded-xl border border-cream-300 bg-cream-50 h-12 text-[13px] font-semibold text-cocoa-600 hover:bg-cream-100 transition-colors"
           >
             {copied
-              ? <><CheckCircle size={14} className="text-emerald-600" /> Copied!</>
-              : <><Copy size={14} /> Copy claim link</>
+              ? <><CheckCircle size={14} className="text-emerald-600" /> {t.common.success}</>
+              : <><Copy size={14} /> {t.qrClaim.generate}</>
             }
           </button>
 
@@ -117,7 +119,7 @@ export default function QRCreateForm({
             onClick={reset}
             className="flex items-center gap-2 mx-auto text-[13px] text-brand-600 hover:text-brand-700 font-semibold py-1"
           >
-            <RefreshCw size={13} /> Generate another
+            <RefreshCw size={13} /> {t.qrClaim.regenerate}
           </button>
         </div>
 
@@ -128,7 +130,7 @@ export default function QRCreateForm({
           {/* Branch selector */}
           <div>
             <label className="block text-[11px] font-semibold text-cocoa-500 uppercase tracking-[0.12em] mb-3">
-              Branch
+              {t.qrClaim.selectBranch}
             </label>
             <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
               {branches.map(b => (

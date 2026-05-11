@@ -3,6 +3,8 @@ import { getCurrentSession } from '@/lib/auth'
 import Sidebar from '@/components/layout/Sidebar'
 import { UserProvider } from '@/components/layout/UserContext'
 import { SidebarProvider } from '@/components/layout/SidebarContext'
+import LanguageProvider from '@/components/i18n/LanguageProvider'
+import { getServerLang } from '@/lib/i18n/server'
 import type { Role } from '@/lib/auth'
 
 // Force every render to re-run session logic — prevents stale cached role
@@ -32,16 +34,20 @@ export default async function DashboardLayout({ children }: { children: React.Re
     role:  (session.profile?.role ?? 'staff') as Role,
   }
 
+  const initialLang = await getServerLang()
+
   return (
-    <SidebarProvider>
-      <div className="flex h-screen overflow-hidden bg-cream-100">
-        <Sidebar user={user} />
-        <UserProvider user={user}>
-          <div className="flex flex-1 flex-col overflow-hidden min-w-0">
-            {children}
-          </div>
-        </UserProvider>
-      </div>
-    </SidebarProvider>
+    <LanguageProvider initialLang={initialLang}>
+      <SidebarProvider>
+        <div className="flex h-screen overflow-hidden bg-cream-100">
+          <Sidebar user={user} />
+          <UserProvider user={user}>
+            <div className="flex flex-1 flex-col overflow-hidden min-w-0">
+              {children}
+            </div>
+          </UserProvider>
+        </div>
+      </SidebarProvider>
+    </LanguageProvider>
   )
 }

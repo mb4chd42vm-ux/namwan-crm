@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Camera, Keyboard, Loader2, AlertTriangle, QrCode, ShieldAlert } from 'lucide-react'
+import { useLanguage } from '@/components/i18n/LanguageProvider'
 
 type Html5QrcodeInstance = {
   start(
@@ -22,6 +23,7 @@ type CameraState = 'init' | 'requesting' | 'scanning' | 'error' | 'denied'
 
 export default function ScannerClient() {
   const router = useRouter()
+  const { t } = useLanguage()
 
   const [mode,        setMode]        = useState<'camera' | 'manual'>('camera')
   const [cameraState, setCameraState] = useState<CameraState>('init')
@@ -137,8 +139,8 @@ export default function ScannerClient() {
       {/* Mode toggle */}
       <div className="flex w-full rounded-2xl border border-cream-300 bg-cream-100 p-1 gap-1">
         {[
-          { id: 'camera', label: 'Camera Scan', icon: Camera   },
-          { id: 'manual', label: 'Enter Token', icon: Keyboard },
+          { id: 'camera', label: t.redeem.scanMode,   icon: Camera   },
+          { id: 'manual', label: t.redeem.manualMode, icon: Keyboard },
         ].map(({ id, label, icon: Icon }) => (
           <button
             key={id}
@@ -201,7 +203,7 @@ export default function ScannerClient() {
                 {/* Status pill */}
                 <div className="absolute bottom-5 flex items-center gap-2 rounded-full bg-cocoa-950/70 border border-white/10 px-4 py-2 backdrop-blur-sm">
                   <div className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-                  <span className="text-[12px] text-white/80 font-medium">Scanning for QR code…</span>
+                  <span className="text-[12px] text-white/80 font-medium">{t.redeem.scanning}</span>
                 </div>
               </div>
             )}
@@ -213,7 +215,7 @@ export default function ScannerClient() {
                   <ShieldAlert size={28} className="text-sand-300" />
                 </div>
                 <div className="space-y-1.5">
-                  <p className="text-[15px] font-bold text-white">Camera access denied</p>
+                  <p className="text-[15px] font-bold text-white">{t.redeem.cameraPermission}</p>
                   <p className="text-[12px] text-white/50 leading-relaxed">
                     Allow camera in browser settings, then tap Retry.
                   </p>

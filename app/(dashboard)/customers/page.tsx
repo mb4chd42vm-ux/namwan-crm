@@ -9,19 +9,11 @@ import { Users, AlertCircle } from 'lucide-react'
 import { pts, fmt } from '@/data/mock'
 import { SEGMENT_META, ALL_SEGMENTS, computeSegment, type Segment } from '@/lib/segments'
 import { createClient } from '@/lib/supabase/server'
+import { getDictionary } from '@/lib/i18n'
+import { getServerLang } from '@/lib/i18n/server'
 
 // Always fetch fresh — prevents stale cache from showing deleted/outdated rows
 export const dynamic = 'force-dynamic'
-
-const TABS: { value: string; label: string }[] = [
-  { value: 'all',            label: 'All' },
-  { value: 'top_fans',       label: 'Top Fans' },
-  { value: 'loyal',          label: 'Loyal' },
-  { value: 'high_potential', label: 'High Potential' },
-  { value: 'new_member',     label: 'New' },
-  { value: 'active',         label: 'Active' },
-  { value: 'inactive',       label: 'Inactive' },
-]
 
 export default async function CustomersPage({
   searchParams,
@@ -29,6 +21,19 @@ export default async function CustomersPage({
   searchParams: Promise<Record<string, string>>
 }) {
   const params       = await searchParams
+  const lang         = await getServerLang()
+  const t            = getDictionary(lang)
+
+  const TABS: { value: string; label: string }[] = [
+    { value: 'all',            label: t.members.tabs.all },
+    { value: 'top_fans',       label: t.segments.vip },
+    { value: 'loyal',          label: t.segments.active },
+    { value: 'high_potential', label: t.members.tabs.highPotential },
+    { value: 'new_member',     label: t.members.tabs.new },
+    { value: 'active',         label: t.members.tabs.active },
+    { value: 'inactive',       label: t.members.tabs.inactive },
+  ]
+
   const seg          = (params.segment ?? 'all') as Segment | 'all'
   const branchFilter = params.branch ?? null
   const q            = params.q ?? ''
@@ -117,8 +122,8 @@ export default async function CustomersPage({
   return (
     <div className="flex flex-1 flex-col overflow-hidden">
       <Topbar
-        title="Members"
-        subtitle={`${fmt(allWithSegment.length)} members · shared loyalty across all branches`}
+        title={t.members.title}
+        subtitle={`${fmt(allWithSegment.length)} ${t.common.members} · shared loyalty across all branches`}
         branches={branches ?? []}
         activeBranch={branchFilter}
       />
@@ -130,7 +135,7 @@ export default async function CustomersPage({
           <div className="flex items-center gap-3 rounded-xl bg-red-50 border border-red-100 px-4 py-3">
             <AlertCircle size={14} className="text-red-500 flex-shrink-0" />
             <p className="text-xs text-red-700">
-              Could not load member data. Check your Supabase credentials in <code className="font-mono bg-red-100 px-1 rounded">.env.local</code>.
+              {t.errors.generic} Check your Supabase credentials in <code className="font-mono bg-red-100 px-1 rounded">.env.local</code>.
             </p>
           </div>
         )}
@@ -138,22 +143,22 @@ export default async function CustomersPage({
         {/* ── Toolbar ── */}
         <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
           {/* Segment tabs */}
-          <div className="flex items-center gap-1 rounded-xl bg-white border border-gray-100 shadow-sm p-1 overflow-x-auto no-scrollbar">
-            {TABS.map(t => (
+          <div className="flex items-center gap-1 rounded-xl bg-white border border-cream-200 shadow-sm p-1 overflow-x-auto no-scrollbar">
+            {TABS.map(tab => (
               <Link
-                key={t.value}
-                href={buildTabHref(t.value)}
+                key={tab.value}
+                href={buildTabHref(tab.value)}
                 className={`flex-shrink-0 rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${
-                  seg === t.value
-                    ? 'bg-gray-900 text-white shadow-sm'
-                    : 'text-gray-500 hover:text-gray-800'
+                  seg === tab.value
+                    ? 'bg-cocoa-900 text-white shadow-sm'
+                    : 'text-cocoa-500 hover:text-cocoa-800'
                 }`}
               >
-                {t.label}
+                {tab.label}
                 <span className={`ml-1.5 rounded-full px-1.5 py-0.5 text-[9px] font-semibold ${
-                  seg === t.value ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-500'
+                  seg === tab.value ? 'bg-white/20 text-white' : 'bg-cream-200 text-cocoa-500'
                 }`}>
-                  {segCounts[t.value] ?? 0}
+                  {segCounts[tab.value] ?? 0}
                 </span>
               </Link>
             ))}
@@ -171,31 +176,29 @@ export default async function CustomersPage({
 
         {/* ── Result count ── */}
         {(q || seg !== 'all' || branchFilter) && (
-          <p className="text-[11px] text-gray-400">
+          <p className="text-[11px] text-cocoa-400">
             {filtered.length === 0
-              ? 'No members match your filters'
-              : `Showing ${filtered.length} member${filtered.length !== 1 ? 's' : ''}${q ? ` for "${q}"` : ''}${seg !== 'all' ? ` · ${SEGMENT_META[seg as Segment]?.label ?? seg}` : ''}`
+              ? t.members.empty.search
+              : `${filtered.length} ${t.common.members}${q ? ` "${q}"` : ''}${seg !== 'all' ? ` · ${SEGMENT_META[seg as Segment]?.label ?? seg}` : ''}`
             }
           </p>
         )}
 
         {/* ── Table ── */}
-        <div className="rounded-2xl border border-white/80 bg-white shadow-[0_1px_3px_rgba(0,0,0,0.05)] overflow-hidden">
+        <div className="rounded-2xl border border-cream-200 bg-white shadow-sm overflow-hidden">
           {filtered.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 gap-3">
-              <Users size={32} className="text-gray-200" />
+              <Users size={32} className="text-cream-300" />
               <div className="text-center">
-                <p className="text-sm font-medium text-gray-400">
-                  {hasError ? 'Could not load members' : 'No members yet'}
+                <p className="text-sm font-medium text-cocoa-400">
+                  {hasError ? t.errors.generic : t.members.empty[seg === 'all' ? 'all' : (seg as keyof typeof t.members.empty)] ?? t.members.empty.all}
                 </p>
-                <p className="text-xs text-gray-300 mt-0.5">
+                <p className="text-xs text-cocoa-300 mt-0.5">
                   {hasError
-                    ? 'Database connection error — check Supabase credentials'
+                    ? t.errors.network
                     : q
-                    ? `No results for "${q}" — try a different search`
-                    : seg !== 'all'
-                    ? `No ${SEGMENT_META[seg as Segment]?.label ?? seg} members${branchFilter ? ' at this branch' : ''}`
-                    : 'Add your first member using the button above'}
+                    ? t.members.empty.search
+                    : ''}
                 </p>
               </div>
               {!hasError && !q && seg === 'all' && <AddCustomerModal />}
@@ -204,13 +207,13 @@ export default async function CustomersPage({
             <div className="overflow-x-auto">
               <table className="w-full text-xs">
                 <thead>
-                  <tr className="border-b border-gray-100 bg-gray-50/60">
-                    <th className="px-4 py-3 text-left text-[10px] font-semibold uppercase tracking-wider text-gray-400">Member</th>
-                    <th className="px-4 py-3 text-left text-[10px] font-semibold uppercase tracking-wider text-gray-400">Segment</th>
-                    <th className="px-4 py-3 text-left text-[10px] font-semibold uppercase tracking-wider text-gray-400 hidden sm:table-cell">Branch</th>
-                    <th className="px-4 py-3 text-left text-[10px] font-semibold uppercase tracking-wider text-gray-400">Points</th>
-                    <th className="px-4 py-3 text-left text-[10px] font-semibold uppercase tracking-wider text-gray-400 hidden lg:table-cell">Visits</th>
-                    <th className="px-4 py-3 text-left text-[10px] font-semibold uppercase tracking-wider text-gray-400 hidden lg:table-cell">Last Visit</th>
+                  <tr className="border-b border-cream-100 bg-cream-50/60">
+                    <th className="px-4 py-3 text-left text-[10px] font-semibold uppercase tracking-wider text-cocoa-400">{t.members.table.member}</th>
+                    <th className="px-4 py-3 text-left text-[10px] font-semibold uppercase tracking-wider text-cocoa-400">{t.members.table.segment}</th>
+                    <th className="px-4 py-3 text-left text-[10px] font-semibold uppercase tracking-wider text-cocoa-400 hidden sm:table-cell">{t.members.table.branch}</th>
+                    <th className="px-4 py-3 text-left text-[10px] font-semibold uppercase tracking-wider text-cocoa-400">{t.members.table.points}</th>
+                    <th className="px-4 py-3 text-left text-[10px] font-semibold uppercase tracking-wider text-cocoa-400 hidden lg:table-cell">{t.members.table.visits}</th>
+                    <th className="px-4 py-3 text-left text-[10px] font-semibold uppercase tracking-wider text-cocoa-400 hidden lg:table-cell">{t.members.table.lastVisit}</th>
                     <th className="w-8" />
                   </tr>
                 </thead>
@@ -275,13 +278,13 @@ export default async function CustomersPage({
         {filtered.length > 0 && (
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
             {[
-              { label: 'Total Members', value: fmt(filtered.length) },
-              { label: 'Total Points',  value: pts(totalPoints) },
-              { label: 'Avg. Visits',   value: avgVisits },
+              { label: t.dashboard.totalMembers, value: fmt(filtered.length) },
+              { label: t.dashboard.pointsAwarded, value: pts(totalPoints) },
+              { label: t.memberDetail.fields.totalVisits, value: avgVisits },
             ].map(s => (
-              <div key={s.label} className="rounded-xl bg-white border border-gray-100 px-4 py-3 text-center shadow-sm">
-                <p className="text-[10px] text-gray-400">{s.label}</p>
-                <p className="text-sm font-bold text-gray-900 mt-0.5">{s.value}</p>
+              <div key={s.label} className="rounded-xl bg-white border border-cream-200 px-4 py-3 text-center shadow-sm">
+                <p className="text-[10px] text-cocoa-400">{s.label}</p>
+                <p className="text-sm font-bold text-cocoa-900 mt-0.5">{s.value}</p>
               </div>
             ))}
           </div>

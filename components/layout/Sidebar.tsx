@@ -9,24 +9,24 @@ import {
 } from 'lucide-react'
 import { logout } from '@/app/actions/auth'
 import { useSidebar } from './SidebarContext'
+import { useLanguage } from '@/components/i18n/LanguageProvider'
 import type { Role } from '@/lib/auth'
 
 interface NavItem {
   href:     string
-  label:    string
+  labelKey: keyof typeof import('@/lib/i18n/th').default['nav']
   icon:     React.ElementType
   minRole?: Role
   group?:   string
 }
 
 const NAV: NavItem[] = [
-  { href: '/dashboard',          label: 'Dashboard', icon: LayoutDashboard, group: 'main' },
-  { href: '/customers',          label: 'Members',   icon: Users,           group: 'main' },
-  { href: '/points',             label: 'Points',    icon: Star,            group: 'main' },
-  { href: '/points/qr/create',   label: 'QR Claim',  icon: QrCode,          group: 'main' },
-  { href: '/points/redeem/scan', label: 'Redeem',    icon: Gift,            group: 'main' },
-  { href: '/branches',           label: 'Branches',  icon: Store,    minRole: 'manager', group: 'manage' },
-  { href: '/settings',           label: 'Settings',  icon: UserCog,  minRole: 'admin',   group: 'manage' },
+  { href: '/dashboard',          labelKey: 'dashboard',   icon: LayoutDashboard, group: 'main' },
+  { href: '/customers',          labelKey: 'members',     icon: Users,           group: 'main' },
+  { href: '/points/qr/create',   labelKey: 'claimQR',     icon: QrCode,          group: 'main' },
+  { href: '/points/redeem/scan', labelKey: 'redeemScan',  icon: Gift,            group: 'main' },
+  { href: '/branches',           labelKey: 'manage',      icon: Store,    minRole: 'manager', group: 'manage' },
+  { href: '/settings',           labelKey: 'settings',    icon: UserCog,  minRole: 'admin',   group: 'manage' },
 ]
 
 const ROLE_RANK: Record<Role, number> = { staff: 0, manager: 1, admin: 2 }
@@ -34,12 +34,6 @@ const ROLE_RANK: Record<Role, number> = { staff: 0, manager: 1, admin: 2 }
 function hasAccess(userRole: Role, minRole?: Role) {
   if (!minRole) return true
   return ROLE_RANK[userRole] >= ROLE_RANK[minRole]
-}
-
-const ROLE_LABELS: Record<Role, string> = {
-  admin:   'Administrator',
-  manager: 'Manager',
-  staff:   'Staff',
 }
 
 const ROLE_BADGE: Record<Role, string> = {
@@ -57,6 +51,7 @@ interface SidebarUser {
 export default function Sidebar({ user }: { user: SidebarUser }) {
   const path = usePathname()
   const { isOpen, close } = useSidebar()
+  const { t } = useLanguage()
 
   const visibleNav = NAV.filter(item => hasAccess(user.role, item.minRole))
   const mainNav    = visibleNav.filter(i => i.group === 'main')
@@ -92,7 +87,7 @@ export default function Sidebar({ user }: { user: SidebarUser }) {
           <div className="min-w-0 flex-1">
             <p className="text-[13px] font-bold text-cocoa-900 leading-none tracking-tight">Namwan Loyalty</p>
             <p className="text-[10px] text-cocoa-500 mt-0.5 tracking-wide uppercase font-medium">
-              {user.role === 'admin' ? 'Admin' : user.role === 'manager' ? 'Manager' : 'Staff'} Portal
+              {t.roles[user.role]} Portal
             </p>
           </div>
           <button
@@ -110,10 +105,10 @@ export default function Sidebar({ user }: { user: SidebarUser }) {
           {/* Main nav */}
           <div>
             <p className="px-2 pb-2.5 text-[9px] font-semibold uppercase tracking-[0.12em] text-cocoa-400">
-              Menu
+              {t.nav.menu}
             </p>
             <div className="space-y-0.5">
-              {mainNav.map(({ href, label, icon: Icon }) => {
+              {mainNav.map(({ href, labelKey, icon: Icon }) => {
                 const active = path === href || path.startsWith(href + '/')
                 return (
                   <Link
@@ -130,7 +125,7 @@ export default function Sidebar({ user }: { user: SidebarUser }) {
                       size={15}
                       className={active ? 'text-brand-600' : 'text-cocoa-400 group-hover:text-cocoa-600'}
                     />
-                    {label}
+                    {t.nav[labelKey]}
                     {active && (
                       <span className="ml-auto h-1.5 w-1.5 rounded-full bg-brand-500" />
                     )}
@@ -144,10 +139,10 @@ export default function Sidebar({ user }: { user: SidebarUser }) {
           {manageNav.length > 0 && (
             <div>
               <p className="px-2 pb-2.5 text-[9px] font-semibold uppercase tracking-[0.12em] text-cocoa-400">
-                Manage
+                {t.nav.manage}
               </p>
               <div className="space-y-0.5">
-                {manageNav.map(({ href, label, icon: Icon }) => {
+                {manageNav.map(({ href, labelKey, icon: Icon }) => {
                   const active = path === href || path.startsWith(href + '/')
                   return (
                     <Link
@@ -164,7 +159,7 @@ export default function Sidebar({ user }: { user: SidebarUser }) {
                         size={15}
                         className={active ? 'text-brand-600' : 'text-cocoa-400 group-hover:text-cocoa-600'}
                       />
-                      {label}
+                      {t.nav[labelKey]}
                       {active && (
                         <span className="ml-auto h-1.5 w-1.5 rounded-full bg-brand-500" />
                       )}
@@ -207,7 +202,7 @@ export default function Sidebar({ user }: { user: SidebarUser }) {
             className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-[12px] font-medium text-cocoa-500 hover:bg-white/70 hover:text-cocoa-800 transition-colors"
           >
             <Settings size={14} className="text-cocoa-400" />
-            Settings
+            {t.nav.settings}
           </Link>
 
           <form action={logout}>
@@ -216,7 +211,7 @@ export default function Sidebar({ user }: { user: SidebarUser }) {
               className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-[12px] font-medium text-cocoa-500 hover:bg-brand-50 hover:text-brand-700 transition-colors"
             >
               <LogOut size={14} className="text-cocoa-400" />
-              Sign Out
+              {t.nav.signOut}
             </button>
           </form>
         </div>

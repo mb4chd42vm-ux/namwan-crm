@@ -8,6 +8,8 @@ import {
 } from 'lucide-react'
 import { useLiff, type LiffProfile } from '@/hooks/useLiff'
 import ProvinceSelector, { type LocationValue } from '@/components/location/ProvinceSelector'
+import { useLanguage } from '@/components/i18n/LanguageProvider'
+import LangToggle from '@/components/i18n/LangToggle'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -97,10 +99,11 @@ function AppHeader() {
       <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/15">
         <Wheat size={18} className="text-sand-300 fill-sand-300/40" />
       </div>
-      <div>
+      <div className="flex-1">
         <p className="text-[15px] font-bold text-white leading-none tracking-tight">Namwan</p>
         <p className="text-[10px] text-white/40 mt-0.5 uppercase tracking-widest">Loyalty</p>
       </div>
+      <LangToggle dark />
     </div>
   )
 }
@@ -198,6 +201,7 @@ function OpenInLineView({
 // ── Error view ────────────────────────────────────────────────────────────────
 
 function ErrorView({ message, onRetry }: { message: string; onRetry?: () => void }) {
+  const { t } = useLanguage()
   return (
     <Shell>
       <div className="flex-1 flex flex-col items-center justify-center gap-6 text-center px-7">
@@ -205,7 +209,7 @@ function ErrorView({ message, onRetry }: { message: string; onRetry?: () => void
           <AlertTriangle size={28} className="text-white/60" />
         </div>
         <div className="space-y-2">
-          <p className="text-xl font-bold text-white">Something went wrong</p>
+          <p className="text-xl font-bold text-white">{t.errors.generic}</p>
           <p className="text-[13px] text-white/40 leading-relaxed">{message}</p>
         </div>
         {onRetry && (
@@ -213,7 +217,7 @@ function ErrorView({ message, onRetry }: { message: string; onRetry?: () => void
             onClick={onRetry}
             className="rounded-xl bg-white/12 border border-white/15 px-8 py-3 text-[13px] font-semibold text-white active:scale-[0.97] transition-all"
           >
-            Try again
+            {t.member.retry}
           </button>
         )}
       </div>
@@ -655,6 +659,7 @@ function MemberView({
   txs:       Tx[]
   purchases: Purchase[]
 }) {
+  const { t } = useLanguage()
   const [tab,      setTab]      = useState<'points' | 'purchases'>('points')
   const [customer, setCustomer] = useState(initialCustomer)
   const [txs,      setTxs]      = useState(initialTxs)
@@ -732,7 +737,7 @@ function MemberView({
           )}
           <div className="flex-1 min-w-0">
             <p className="text-[18px] font-bold text-white truncate tracking-tight">
-              Hi, {customer.name.split(' ')[0]}
+              {t.member.greeting(customer.name.split(' ')[0])}
             </p>
             <p className="text-[11px] text-white/40 truncate">{customer.phone}</p>
           </div>
@@ -747,7 +752,7 @@ function MemberView({
           <div className="flex items-start justify-between">
             <div>
               <p className="text-[10px] font-semibold text-white/40 uppercase tracking-[0.15em] mb-1">
-                Points Balance
+                {t.member.points}
               </p>
               <p className="text-[64px] font-black text-white leading-none tracking-tight">
                 {fmt(customer.total_points)}
@@ -755,7 +760,7 @@ function MemberView({
             </div>
             {freeDrinks > 0 && (
               <div className="text-right">
-                <p className="text-[10px] text-white/40 uppercase tracking-widest mb-1">Free drinks</p>
+                <p className="text-[10px] text-white/40 uppercase tracking-widest mb-1">{t.qrClaim.pointsLabel(freeDrinks)}</p>
                 <div className="flex items-center gap-1.5 justify-end">
                   <Sparkles size={16} className="text-sand-300" />
                   <p className="text-[32px] font-black text-sand-300 leading-none">{freeDrinks}</p>
@@ -767,8 +772,8 @@ function MemberView({
           {/* Progress to next drink */}
           <div className="space-y-2">
             <div className="flex items-center justify-between text-[11px] text-white/50">
-              <span>Progress to next free drink</span>
-              <span className="font-bold text-white/70">{10 - drinksToFree}/10 drinks</span>
+              <span>{t.member.nextReward}</span>
+              <span className="font-bold text-white/70">{t.member.progressLabel(10 - drinksToFree, 10)}</span>
             </div>
             <div className="h-2 rounded-full bg-white/15 overflow-hidden">
               <div
@@ -781,8 +786,8 @@ function MemberView({
             </div>
             <p className="text-[11px] text-white/40">
               {drinksToFree === 0
-                ? '🎉 Free drink ready — tap below to redeem!'
-                : `${drinksToFree} more drink${drinksToFree !== 1 ? 's' : ''} until your next free one`}
+                ? t.member.redeemHint
+                : t.member.notEnoughPoints}
             </p>
           </div>
         </div>
@@ -803,11 +808,11 @@ function MemberView({
             }}
           >
             {redeemState === 'pending' ? (
-              <><Loader2 size={17} className="animate-spin" /> Generating QR…</>
+              <><Loader2 size={17} className="animate-spin" /> {t.redeem.scanning}</>
             ) : canRedeem ? (
-              <><QrCode size={17} /> Redeem Free Drink <span className="opacity-60 text-[13px] font-medium">· 10 pts</span></>
+              <><QrCode size={17} /> {t.member.redeemButton} <span className="opacity-60 text-[13px] font-medium">· 10 pts</span></>
             ) : (
-              <>{POINTS_PER_DRINK - customer.total_points} more pts to redeem</>
+              <>{t.member.notEnoughPoints}</>
             )}
           </button>
           {redeemState === 'error' && redeemError && (
@@ -818,9 +823,9 @@ function MemberView({
         {/* Stats */}
         <div className="grid grid-cols-3 gap-2">
           {[
-            { label: 'Visits',      value: fmt(customer.visit_count) },
-            { label: 'Spent',       value: thb(customer.total_spending) },
-            { label: 'Free Drinks', value: fmt(freeDrinks) },
+            { label: t.member.visitsLabel,       value: fmt(customer.visit_count) },
+            { label: t.memberDetail.fields.totalVisits, value: thb(customer.total_spending) },
+            { label: t.member.pointsSuffix,      value: fmt(freeDrinks) },
           ].map(s => (
             <div key={s.label} className="rounded-2xl bg-white/8 border border-white/10 px-2 py-3 text-center">
               <p className="text-[9px] text-white/40 uppercase tracking-widest">{s.label}</p>
@@ -952,6 +957,7 @@ type AppPhase =
 
 export default function MemberPage() {
   const liff = useLiff()
+  const { t } = useLanguage()
   const [app, setApp] = useState<AppPhase>({ phase: 'loading' })
 
   const fetchMemberRef = useRef<((p: LiffProfile) => void) | null>(null)

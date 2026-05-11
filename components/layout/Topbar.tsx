@@ -6,6 +6,8 @@ import { useUser, type Role } from '@/components/layout/UserContext'
 import { logout } from '@/app/actions/auth'
 import { useSidebar } from '@/components/layout/SidebarContext'
 import { useState, useRef, useEffect } from 'react'
+import { useLanguage } from '@/components/i18n/LanguageProvider'
+import LangToggle from '@/components/i18n/LangToggle'
 
 interface BranchOption { id: string; name: string }
 
@@ -39,6 +41,7 @@ export default function Topbar({ title, subtitle, branches = [], activeBranch }:
   const pathname = usePathname()
   const user     = useUser()
   const { toggle } = useSidebar()
+  const { t } = useLanguage()
 
   const [menuOpen, setMenuOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
@@ -92,7 +95,7 @@ export default function Topbar({ title, subtitle, branches = [], activeBranch }:
                 : 'text-cocoa-500 hover:text-cocoa-800'
             }`}
           >
-            All
+            {t.common.all}
           </button>
           {branches.map(b => (
             <button
@@ -109,6 +112,9 @@ export default function Topbar({ title, subtitle, branches = [], activeBranch }:
           ))}
         </div>
       )}
+
+      {/* Language toggle */}
+      <LangToggle />
 
       {/* User menu */}
       <div className="relative" ref={menuRef}>
@@ -154,7 +160,7 @@ export default function Topbar({ title, subtitle, branches = [], activeBranch }:
                 className="w-full flex items-center gap-3 px-4 py-3.5 text-[13px] font-medium text-brand-600 hover:bg-brand-50 transition-colors"
               >
                 <LogOut size={14} />
-                Sign Out
+                {t.nav.signOut}
               </button>
             </form>
           </div>

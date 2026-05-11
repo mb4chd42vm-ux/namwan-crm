@@ -4,10 +4,15 @@ import { getCurrentSession } from '@/lib/auth'
 import { redirect } from 'next/navigation'
 import { headers } from 'next/headers'
 import QRCreateForm from './QRCreateForm'
+import { getDictionary } from '@/lib/i18n'
+import { getServerLang } from '@/lib/i18n/server'
 
 export default async function QRCreatePage() {
   const session = await getCurrentSession()
   if (!session) redirect('/login')
+
+  const lang = await getServerLang()
+  const t    = getDictionary(lang)
 
   const supabase = await createClient()
   const { data: branches } = await supabase
@@ -30,8 +35,8 @@ export default async function QRCreatePage() {
           <QrCode size={15} className="text-brand-600" />
         </div>
         <div>
-          <h1 className="text-[15px] font-semibold text-cocoa-900 tracking-tight">Generate Claim QR</h1>
-          <p className="text-[11px] text-cocoa-400">One-time QR · 5-minute expiry</p>
+          <h1 className="text-[15px] font-semibold text-cocoa-900 tracking-tight">{t.qrClaim.title}</h1>
+          <p className="text-[11px] text-cocoa-400">{t.qrClaim.subtitle}</p>
         </div>
       </div>
 

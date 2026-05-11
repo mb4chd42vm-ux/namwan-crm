@@ -10,6 +10,8 @@ import RedeemPointsModal from '@/components/points/RedeemPointsModal'
 import { TX_META, thb, pts, fmt, type TxType } from '@/data/mock'
 import { SEGMENT_META, computeSegment, type Segment } from '@/lib/segments'
 import { createClient } from '@/lib/supabase/server'
+import { getDictionary } from '@/lib/i18n'
+import { getServerLang } from '@/lib/i18n/server'
 
 // Always fetch fresh — never serve a stale/deleted customer from cache
 export const dynamic = 'force-dynamic'
@@ -25,6 +27,8 @@ export default async function CustomerDetailPage({
   const id        = rawId.trim()          // trim any accidental whitespace
   const sp        = await searchParams
   const debugMode = sp.debug === '1'
+  const lang      = await getServerLang()
+  const t         = getDictionary(lang)
 
   // Log both raw and trimmed so we can spot encoding/whitespace issues
   console.log('[customer-detail] raw params.id :', JSON.stringify(rawId))
@@ -116,17 +120,17 @@ export default async function CustomerDetailPage({
   const favBranch   = (branches ?? []).find(b => b.id === customer.favorite_branch_id) ?? null
 
   const DISCOVERED_LABELS: Record<string, string> = {
-    social_media: 'Social Media',
-    friend:       'Friend Referral',
-    walk_in:      'Walk-in',
-    other:        'Other',
+    social_media: t.memberDetail.discovered.social_media,
+    friend:       t.memberDetail.discovered.friend,
+    walk_in:      t.memberDetail.discovered.walk_in,
+    other:        t.memberDetail.discovered.other,
   }
   const GENDER_LABELS: Record<string, string> = {
-    male:              'Male',
-    female:            'Female',
-    non_binary:        'Non-binary',
-    prefer_not_to_say: 'Prefer not to say',
-    other:             'Other',
+    male:              t.memberDetail.gender.male,
+    female:            t.memberDetail.gender.female,
+    non_binary:        t.memberDetail.gender.other,
+    prefer_not_to_say: t.memberDetail.gender['prefer_not_to_say'],
+    other:             t.memberDetail.gender.other,
   }
 
   const allPurchases = purchases ?? []
@@ -191,7 +195,7 @@ export default async function CustomerDetailPage({
     <div className="flex flex-1 flex-col overflow-hidden">
       <Topbar
         title={customer.name}
-        subtitle="Customer Profile"
+        subtitle={t.memberDetail.title}
         branches={branches ?? []}
       />
 
@@ -223,9 +227,9 @@ export default async function CustomerDetailPage({
         <div className="flex flex-wrap items-center justify-between gap-3">
           <Link
             href="/customers"
-            className="inline-flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-900 transition-colors"
+            className="inline-flex items-center gap-1.5 text-xs text-cocoa-500 hover:text-cocoa-900 transition-colors"
           >
-            <ArrowLeft size={13} /> Back to Customers
+            <ArrowLeft size={13} /> {t.common.back}
           </Link>
           <div className="flex items-center gap-2 flex-wrap">
             <RedeemPointsModal
