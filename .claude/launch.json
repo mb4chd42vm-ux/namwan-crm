@@ -5,6 +5,7 @@
       "name": "namwan-crm",
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "dev"],
+      "cwd": "/Users/methaym/namwan-crm",
       "port": 3000
     }
   ]

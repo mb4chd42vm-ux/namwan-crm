@@ -11,41 +11,25 @@ export default async function ClaimPage({
 
   const supabase = await createClient()
 
-  // Look up the QR token
+  // Look up only the QR token row — no customer data fetched here
   const { data: row } = await supabase
     .from('point_claim_qr')
     .select('*, branches(id, name, color_hex)')
     .eq('token', token)
     .single()
 
-  // Determine state
-  const now        = new Date()
-  const isExpired  = !row || new Date(row.expires_at) < now
-  const isClaimed  = row?.status === 'claimed'
+  const now       = new Date()
+  const isExpired = !row || new Date(row.expires_at) < now
+  const isClaimed = row?.status === 'claimed'
   const isCancelled = row?.status === 'cancelled'
-  const isInvalid  = !row
+  const isInvalid = !row
 
   const branch = row?.branches as { id: string; name: string; color_hex: string } | null
 
-  if (isInvalid) {
-    return <ErrorPage title="QR Code Not Found" message="This QR code doesn't exist or may have been removed." />
-  }
-  if (isClaimed) {
-    return <ErrorPage title="Already Claimed" message="This QR code has already been used." />
-  }
-  if (isCancelled) {
-    return <ErrorPage title="Cancelled" message="This QR code has been cancelled by staff." />
-  }
-  if (isExpired) {
-    return <ErrorPage title="QR Code Expired" message="This QR code has expired. Ask staff to generate a new one." expired />
-  }
-
-  // Load customers for phone lookup
-  const { data: customers } = await supabase
-    .from('customers')
-    .select('id, name, phone')
-    .eq('is_active', true)
-    .order('name')
+  if (isInvalid)   return <ErrorPage title="QR Code Not Found"  message="This QR code doesn't exist or may have been removed." />
+  if (isClaimed)   return <ErrorPage title="Already Claimed"    message="This QR code has already been used." />
+  if (isCancelled) return <ErrorPage title="Cancelled"          message="This QR code has been cancelled by staff." />
+  if (isExpired)   return <ErrorPage title="QR Code Expired"    message="This QR code has expired. Ask staff to generate a new one." expired />
 
   const expiresAt = new Date(row.expires_at)
   const minsLeft  = Math.max(0, Math.ceil((expiresAt.getTime() - now.getTime()) / 60000))
@@ -76,7 +60,6 @@ export default async function ClaimPage({
             points={row.points}
             branchName={branch?.name ?? 'Unknown'}
             branchColor={branch?.color_hex ?? '#c45f12'}
-            customers={customers ?? []}
           />
         </div>
       </div>
@@ -89,8 +72,8 @@ function ErrorPage({
   message,
   expired,
 }: {
-  title: string
-  message: string
+  title:    string
+  message:  string
   expired?: boolean
 }) {
   return (
