@@ -27,9 +27,9 @@ export default async function ClaimPage({
   const branch = row?.branches as { id: string; name: string; color_hex: string } | null
 
   if (isInvalid)   return <ErrorPage title="QR Code Not Found"  message="This QR code doesn't exist or may have been removed." />
-  if (isClaimed)   return <ErrorPage title="Already Claimed"    message="This QR code has already been used." />
+  if (isClaimed)   return <ErrorPage title="QR นี้ถูกใช้รับแต้มแล้ว"  message="This reward has already been claimed." />
   if (isCancelled) return <ErrorPage title="Cancelled"          message="This QR code has been cancelled by staff." />
-  if (isExpired)   return <ErrorPage title="QR Code Expired"    message="This QR code has expired. Ask staff to generate a new one." expired />
+  if (isExpired)   return <ErrorPage title="QR นี้หมดอายุแล้ว"  message="Ask staff to generate a new QR code." expired />
 
   const expiresAt = new Date(row.expires_at)
   const minsLeft  = Math.max(0, Math.ceil((expiresAt.getTime() - now.getTime()) / 60000))

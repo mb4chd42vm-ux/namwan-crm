@@ -8,6 +8,7 @@ import {
 } from 'lucide-react'
 import Image from 'next/image'
 import { useLiff, type LiffProfile } from '@/hooks/useLiff'
+import { claimQRToken, type ClaimResult } from '@/app/actions/qrClaims'
 import ProvinceSelector, { type LocationValue } from '@/components/location/ProvinceSelector'
 import { useLanguage } from '@/components/i18n/LanguageProvider'
 import LangToggle from '@/components/i18n/LangToggle'
@@ -230,10 +231,14 @@ function ErrorView({ message, onRetry }: { message: string; onRetry?: () => void
 
 function RegisterView({
   profile,
+  claimToken,
   onLinked,
+  onClaimed,
 }: {
-  profile:  LiffProfile
-  onLinked: (customer: Customer) => void
+  profile:    LiffProfile
+  claimToken: string | null
+  onLinked:   (customer: Customer) => void
+  onClaimed:  (result: ClaimResult, customer: Customer) => void
 }) {
   const [step,      setStep]      = useState<1 | 2>(1)
   const [isPending, start]        = useTransition()
@@ -296,7 +301,25 @@ function RegisterView({
           setError(data.error ?? 'Registration failed. Please try again.')
           return
         }
-        onLinked(data.customer as Customer)
+
+        const customer = data.customer as Customer
+
+        // Auto-claim QR token if one was passed via the LIFF URL
+        if (claimToken) {
+          const claimFd = new FormData()
+          claimFd.append('token',       claimToken)
+          claimFd.append('customer_id', customer.id)
+          try {
+            const claimRes = await claimQRToken(claimFd)
+            onClaimed({ ...claimRes, customerName: customer.name }, customer)
+          } catch (claimErr) {
+            // Token expired or already claimed — still show the member dashboard
+            console.error('[RegisterView] auto-claim failed:', claimErr)
+            onLinked(customer)
+          }
+        } else {
+          onLinked(customer)
+        }
       } catch {
         setError('Connection error. Please try again.')
       }
@@ -944,6 +967,62 @@ function EmptyState({ icon: Icon, message }: { icon: React.ElementType; message:
   )
 }
 
+// ── Claim success view ────────────────────────────────────────────────────────
+
+function ClaimSuccessView({
+  claimResult,
+  customer,
+  onDone,
+}: {
+  claimResult: ClaimResult
+  customer:    Customer
+  onDone:      () => void
+}) {
+  return (
+    <Shell>
+      <div className="flex-1 flex flex-col items-center justify-center px-6 pb-10 gap-7 text-center">
+        <div className="flex h-24 w-24 items-center justify-center rounded-full bg-white/15">
+          <Star size={44} className="text-sand-300 fill-sand-300" />
+        </div>
+
+        <div className="space-y-2">
+          {claimResult.customerName && (
+            <p className="text-[17px] font-semibold text-white/80">
+              ยินดีต้อนรับ, {claimResult.customerName.split(' ')[0]}!
+            </p>
+          )}
+          <p className="text-[52px] font-black text-white leading-none">
+            +{claimResult.points}
+          </p>
+          <p className="text-[15px] text-white/60">
+            {claimResult.drinkQuantity} drink{claimResult.drinkQuantity !== 1 ? 's' : ''} · คะแนนถูกเพิ่มแล้ว
+          </p>
+        </div>
+
+        {claimResult.newBalance !== null && (
+          <div className="w-full max-w-xs rounded-2xl bg-white/10 border border-white/12 px-5 py-4 text-center">
+            <p className="text-[11px] font-semibold text-white/40 uppercase tracking-[0.15em]">
+              คะแนนสะสมทั้งหมด
+            </p>
+            <p className="text-[40px] font-black text-white mt-1 leading-none">
+              {claimResult.newBalance.toLocaleString()}
+            </p>
+            <p className="text-[11px] text-white/40 mt-1">10 คะแนน = เครื่องดื่ม 1 แก้วฟรี</p>
+          </div>
+        )}
+
+        <button
+          type="button"
+          onClick={onDone}
+          className="w-full max-w-xs h-14 rounded-2xl bg-white text-brand-700 text-[15px] font-bold active:scale-[0.97] transition-all shadow-lg"
+        >
+          ดูคะแนนของฉัน
+        </button>
+      </div>
+    </Shell>
+  )
+}
+
 // ── App state machine ─────────────────────────────────────────────────────────
 
 type AppPhase =
@@ -952,6 +1031,7 @@ type AppPhase =
   | { phase: 'fetching_customer'; profile: LiffProfile }
   | { phase: 'needs_registration'; profile: LiffProfile }
   | { phase: 'member'; customer: Customer; txs: Tx[]; purchases: Purchase[] }
+  | { phase: 'claim_success'; customer: Customer; claimResult: ClaimResult }
   | { phase: 'error'; message: string; retry?: () => void }
 
 // ── Root ──────────────────────────────────────────────────────────────────────
@@ -960,6 +1040,10 @@ export default function MemberPage() {
   const liff = useLiff()
   const { t } = useLanguage()
   const [app, setApp] = useState<AppPhase>({ phase: 'loading' })
+
+  // Extract claim_token from URL params after LIFF init decodes liff.state
+  const [claimToken, setClaimToken] = useState<string | null>(null)
+  const claimTokenExtracted = useRef(false)
 
   const fetchMemberRef = useRef<((p: LiffProfile) => void) | null>(null)
 
@@ -1017,6 +1101,12 @@ export default function MemberPage() {
       return
     }
     if (liff.status === 'ready' && liff.profile) {
+      // Extract claim_token after LIFF init has decoded liff.state into URL params
+      if (!claimTokenExtracted.current) {
+        claimTokenExtracted.current = true
+        const ct = new URLSearchParams(window.location.search).get('claim_token')
+        if (ct) setClaimToken(ct)
+      }
       setApp({ phase: 'fetching_customer', profile: liff.profile })
       fetchMemberRef.current?.(liff.profile)
     }
@@ -1043,8 +1133,27 @@ export default function MemberPage() {
       return (
         <RegisterView
           profile={app.profile}
+          claimToken={claimToken}
           onLinked={customer =>
             setApp({ phase: 'member', customer, txs: [], purchases: [] })
+          }
+          onClaimed={(result, customer) =>
+            setApp({
+              phase:       'claim_success',
+              customer:    { ...customer, total_points: result.newBalance ?? 0 },
+              claimResult: result,
+            })
+          }
+        />
+      )
+
+    case 'claim_success':
+      return (
+        <ClaimSuccessView
+          claimResult={app.claimResult}
+          customer={app.customer}
+          onDone={() =>
+            setApp({ phase: 'member', customer: app.customer, txs: [], purchases: [] })
           }
         />
       )
@@ -1053,6 +1162,12 @@ export default function MemberPage() {
       return <ErrorView message={app.message} onRetry={app.retry} />
 
     case 'member':
+      // If the member arrived via a claim LIFF link, redirect to the claim page.
+      // The claim page's LIFF auto-identification will find them and let them claim.
+      if (claimToken) {
+        window.location.replace(`/claim/${claimToken}`)
+        return <SkeletonView />
+      }
       return <MemberView customer={app.customer} txs={app.txs} purchases={app.purchases} />
   }
 }

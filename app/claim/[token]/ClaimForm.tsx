@@ -7,6 +7,12 @@ import { useLiff } from '@/hooks/useLiff'
 
 interface ResolvedCustomer { id: string; name: string; via: 'line' }
 
+const LINE_ICON = (
+  <svg viewBox="0 0 24 24" className="h-5 w-5 fill-white flex-shrink-0" aria-hidden>
+    <path d="M12 2C6.48 2 2 6.16 2 11.25c0 4.58 3.87 8.4 9.08 9.12.35.07.84.23.96.52.11.26.07.67.03.94l-.15.91c-.05.26-.22 1.03.9.56 1.12-.47 6.05-3.56 8.25-6.1C22.66 15.01 22 13.2 22 11.25 22 6.16 17.52 2 12 2z" />
+  </svg>
+)
+
 export default function ClaimForm({
   token,
   drinkQuantity,
@@ -21,9 +27,10 @@ export default function ClaimForm({
   branchColor:   string
 }) {
   const [isPending, startTransition] = useTransition()
-  const [phone,     setPhone]        = useState('')
-  const [error,     setError]        = useState<string | null>(null)
-  const [claimed,   setClaimed]      = useState<ClaimResult | null>(null)
+  const [phone,        setPhone]        = useState('')
+  const [error,        setError]        = useState<string | null>(null)
+  const [phoneNotFound, setPhoneNotFound] = useState(false)
+  const [claimed,      setClaimed]      = useState<ClaimResult | null>(null)
 
   const liff = useLiff()
   const [lineCustomer,  setLineCustomer]  = useState<ResolvedCustomer | null>(null)
@@ -73,7 +80,7 @@ export default function ClaimForm({
         const res = await claimQRToken(fd)
         setClaimed({ ...res, customerName: lineCustomer.name })
       } catch (e: unknown) {
-        setError(e instanceof Error ? e.message : 'Something went wrong')
+        setError(e instanceof Error ? e.message : 'Something went wrong. Please try again.')
       }
     })
   }
@@ -88,9 +95,13 @@ export default function ClaimForm({
     startTransition(async () => {
       try {
         const res = await lookupAndClaimByPhone(fd)
-        setClaimed(res)
+        if ('notFound' in res && res.notFound) {
+          setPhoneNotFound(true)
+        } else {
+          setClaimed(res as ClaimResult)
+        }
       } catch (e: unknown) {
-        setError(e instanceof Error ? e.message : 'Something went wrong')
+        setError(e instanceof Error ? e.message : 'Something went wrong. Please try again.')
       }
     })
   }
@@ -159,6 +170,67 @@ export default function ClaimForm({
     )
   }
 
+  // ── Phone not found — redirect to LINE registration ───────────────────────
+  if (phoneNotFound) {
+    const liffId  = process.env.NEXT_PUBLIC_LIFF_ID
+    const lineUrl = liffId
+      ? `https://liff.line.me/${liffId}?claim_token=${encodeURIComponent(token)}`
+      : null
+
+    return (
+      <div className="space-y-5">
+        {/* Reward banner */}
+        <div
+          className="flex items-center justify-between rounded-2xl px-5 py-5 text-white"
+          style={{ background: branchColor }}
+        >
+          <div>
+            <p className="text-sm font-semibold opacity-80">Points to claim</p>
+            <p className="text-4xl font-black mt-1">+{points}</p>
+            <p className="text-sm opacity-70 mt-1.5">
+              {drinkQuantity} drink{drinkQuantity !== 1 ? 's' : ''} · {branchName}
+            </p>
+          </div>
+          <Star size={52} className="opacity-25 fill-white" />
+        </div>
+
+        {/* Not found card */}
+        <div className="rounded-2xl bg-amber-50 border border-amber-100 px-5 py-5 space-y-1">
+          <p className="text-sm font-bold text-amber-900 leading-snug">
+            ยังไม่พบเบอร์นี้ในระบบสมาชิก
+          </p>
+          <p className="text-sm text-amber-700 leading-relaxed">
+            กรุณาสมัครสมาชิกผ่าน LINE ก่อนรับแต้ม
+          </p>
+        </div>
+
+        {lineUrl ? (
+          <a
+            href={lineUrl}
+            className="w-full h-14 rounded-2xl text-base font-bold text-white flex items-center justify-center gap-2.5 active:opacity-80 transition-opacity"
+            style={{ background: '#06C755' }}
+          >
+            {LINE_ICON}
+            สมัครผ่าน LINE เพื่อรับแต้ม
+          </a>
+        ) : (
+          <div className="rounded-xl bg-gray-50 border border-gray-200 px-4 py-3 text-center">
+            <p className="text-sm text-gray-600">กรุณาติดต่อพนักงานเพื่อสมัครสมาชิก</p>
+          </div>
+        )}
+
+        <button
+          type="button"
+          onClick={() => { setPhoneNotFound(false); setError(null) }}
+          className="w-full text-center text-sm text-gray-400 py-2"
+        >
+          ใช้เบอร์อื่น
+        </button>
+      </div>
+    )
+  }
+
+  // ── Phone view (default) ──────────────────────────────────────────────────
   return (
     <div className="space-y-5">
       {/* Reward banner */}
@@ -249,10 +321,6 @@ export default function ClaimForm({
               : 'Claim Points'
             }
           </button>
-
-          <p className="text-center text-sm text-gray-400">
-            Not a member yet? Ask staff to sign you up.
-          </p>
         </div>
       )}
     </div>

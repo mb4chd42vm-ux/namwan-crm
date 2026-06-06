@@ -12,6 +12,14 @@ export interface ClaimResult {
   customerName:  string
 }
 
+/** Returned when a phone number has no matching customer. */
+export interface PhoneNotFoundResult {
+  notFound: true
+  phone:    string
+}
+
+export type LookupClaimResult = ClaimResult | PhoneNotFoundResult
+
 const EXPIRES_MINUTES = 5
 
 export async function createQRToken(formData: FormData) {
@@ -41,7 +49,10 @@ export async function createQRToken(formData: FormData) {
     created_by_staff_id: session.userId,
   })
 
-  if (error) throw new Error(error.message)
+  if (error) {
+    console.error('[createQRToken] insert error:', error)
+    throw new Error('Could not create QR token. Please try again.')
+  }
 
   revalidatePath('/points/qr/create')
   return { token, expiresAt }
@@ -63,15 +74,17 @@ export async function claimQRToken(formData: FormData) {
     .eq('token', token)
     .single()
 
-  if (fetchErr || !row) throw new Error('QR code not found')
-  if (row.status === 'claimed')   throw new Error('This QR code has already been claimed')
-  if (row.status === 'cancelled') throw new Error('This QR code has been cancelled')
+  if (fetchErr || !row) {
+    console.error('[claimQRToken] token fetch error:', fetchErr)
+    throw new Error('QR code not found')
+  }
+  if (row.status === 'claimed')   throw new Error('This reward has already been claimed.')
+  if (row.status === 'cancelled') throw new Error('This QR code has been cancelled.')
   if (row.status === 'expired' || new Date(row.expires_at) < new Date()) {
-    // Mark expired if not already
     if (row.status !== 'expired') {
       await supabase.from('point_claim_qr').update({ status: 'expired' }).eq('id', row.id)
     }
-    throw new Error('This QR code has expired')
+    throw new Error('This QR code has expired.')
   }
 
   // Atomic claim: update status → claimed
@@ -85,7 +98,10 @@ export async function claimQRToken(formData: FormData) {
     .eq('id', row.id)
     .eq('status', 'pending')  // optimistic concurrency — only update if still pending
 
-  if (updateErr) throw new Error(updateErr.message)
+  if (updateErr) {
+    console.error('[claimQRToken] update error:', updateErr)
+    throw new Error('Could not claim points. Please try again.')
+  }
 
   // Award points via adjust_points RPC
   const note = `QR claim: ${row.drink_quantity} drink${row.drink_quantity !== 1 ? 's' : ''} (${row.points} pts)`
@@ -99,13 +115,14 @@ export async function claimQRToken(formData: FormData) {
   })
 
   if (rpcErr) {
+    console.error('[claimQRToken] adjust_points RPC error:', rpcErr)
     // Roll back status update on RPC failure
     await supabase.from('point_claim_qr').update({
       status:                 'pending',
       claimed_by_customer_id: null,
       claimed_at:             null,
     }).eq('id', row.id)
-    throw new Error(rpcErr.message)
+    throw new Error('Points could not be awarded. Please ask staff for help.')
   }
 
   revalidatePath('/points')
@@ -131,10 +148,12 @@ export async function claimQRToken(formData: FormData) {
  * Server-only: look up a customer by phone number, validate the QR token,
  * then perform the claim atomically.
  *
- * The browser never receives any customer list or IDs. Phone lookup and
- * customer_id resolution happen entirely on the server.
+ * Returns PhoneNotFoundResult (notFound: true) instead of throwing when the
+ * phone number has no match — the client should show the registration form.
+ *
+ * The browser never receives any customer list or IDs.
  */
-export async function lookupAndClaimByPhone(formData: FormData): Promise<ClaimResult> {
+export async function lookupAndClaimByPhone(formData: FormData): Promise<LookupClaimResult> {
   const token = (formData.get('token') as string)?.trim()
   const phone = (formData.get('phone') as string)?.trim()
 
@@ -143,50 +162,62 @@ export async function lookupAndClaimByPhone(formData: FormData): Promise<ClaimRe
 
   const supabase = await createClient()
 
-  // 1. Validate token is still claimable (re-checks on server — not client state)
+  // 1. Validate token
   const { data: row, error: fetchErr } = await supabase
     .from('point_claim_qr')
     .select('id, status, expires_at, branch_id, drink_quantity, points')
     .eq('token', token)
     .single()
 
-  if (fetchErr || !row) throw new Error('QR code not found')
-  if (row.status === 'claimed')   throw new Error('This QR code has already been claimed')
-  if (row.status === 'cancelled') throw new Error('This QR code has been cancelled')
+  if (fetchErr || !row) {
+    console.error('[lookupAndClaimByPhone] token fetch error:', fetchErr)
+    throw new Error('QR code not found.')
+  }
+  if (row.status === 'claimed')   throw new Error('This reward has already been claimed.')
+  if (row.status === 'cancelled') throw new Error('This QR code has been cancelled.')
   if (row.status === 'expired' || new Date(row.expires_at) < new Date()) {
     if (row.status !== 'expired') {
       await supabase.from('point_claim_qr').update({ status: 'expired' }).eq('id', row.id)
     }
-    throw new Error('This QR code has expired')
+    throw new Error('This QR code has expired.')
   }
 
   // 2. Look up customer by phone — server-side only, never sent to browser
-  //    Try exact match first, then substring match for formatting variants
-  //    (e.g. "0812345678" vs "081-234-5678")
   let customerId: string
   let customerName: string
 
-  const { data: exact } = await supabase
+  const { data: exact, error: exactErr } = await supabase
     .from('customers')
     .select('id, name')
     .eq('phone', phone)
     .eq('is_active', true)
     .maybeSingle()
 
+  if (exactErr) {
+    console.error('[lookupAndClaimByPhone] exact lookup error:', exactErr)
+    throw new Error('Could not verify your phone number. Please try again.')
+  }
+
   if (exact) {
     customerId   = exact.id
     customerName = exact.name
   } else {
     // Substring match for phone formatting variants
-    const { data: fuzzy } = await supabase
+    const { data: fuzzy, error: fuzzyErr } = await supabase
       .from('customers')
       .select('id, name')
       .ilike('phone', `%${phone}%`)
       .eq('is_active', true)
       .limit(1)
 
+    if (fuzzyErr) {
+      console.error('[lookupAndClaimByPhone] fuzzy lookup error:', fuzzyErr)
+      throw new Error('Could not verify your phone number. Please try again.')
+    }
+
     if (!fuzzy || fuzzy.length === 0) {
-      throw new Error('Phone number not found. Ask staff if you are registered.')
+      // No match — caller should show registration form
+      return { notFound: true, phone }
     }
     customerId   = fuzzy[0].id
     customerName = fuzzy[0].name
@@ -203,7 +234,10 @@ export async function lookupAndClaimByPhone(formData: FormData): Promise<ClaimRe
     .eq('id', row.id)
     .eq('status', 'pending')  // optimistic concurrency — only update if still pending
 
-  if (updateErr) throw new Error(updateErr.message)
+  if (updateErr) {
+    console.error('[lookupAndClaimByPhone] claim update error:', updateErr)
+    throw new Error('Could not claim points. Please try again.')
+  }
 
   // 4. Award points
   const note = `QR claim: ${row.drink_quantity} drink${row.drink_quantity !== 1 ? 's' : ''} (${row.points} pts)`
@@ -217,20 +251,21 @@ export async function lookupAndClaimByPhone(formData: FormData): Promise<ClaimRe
   })
 
   if (rpcErr) {
+    console.error('[lookupAndClaimByPhone] adjust_points RPC error:', rpcErr)
     // Roll back the status update on RPC failure
     await supabase.from('point_claim_qr').update({
       status:                 'pending',
       claimed_by_customer_id: null,
       claimed_at:             null,
     }).eq('id', row.id)
-    throw new Error(rpcErr.message)
+    throw new Error('Points could not be awarded. Please ask staff for help.')
   }
 
   revalidatePath('/points')
   revalidatePath(`/customers/${customerId}`)
   revalidatePath('/dashboard')
 
-  // 5. Return result — only the customer's own data, not any list
+  // 5. Return result — only the customer's own data
   const { data: updated } = await supabase
     .from('customers')
     .select('total_points')
@@ -244,3 +279,4 @@ export async function lookupAndClaimByPhone(formData: FormData): Promise<ClaimRe
     customerName,
   }
 }
+
