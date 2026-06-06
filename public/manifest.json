@@ -3,7 +3,7 @@
   "name": "Namwan Loyalty",
   "short_name": "Namwan",
   "description": "Namwan multi-branch loyalty membership system",
-  "start_url": "/",
+  "start_url": "/dashboard",
   "scope": "/",
   "display": "standalone",
   "background_color": "#FF2B00",
